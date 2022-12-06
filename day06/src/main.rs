@@ -1,5 +1,7 @@
 use std::fs;
 use std::io::{self, Read};
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 fn main() -> io::Result<()> {
     // Open the file in read-only mode
@@ -11,17 +13,17 @@ fn main() -> io::Result<()> {
     // Read the entire file into the string
     file.read_to_end(&mut contents)?;
 
-    let mut count = 3;
+    let mut count = 13;
 
     // Print each line
-    for seq in contents.windows(4) {
-           count += 1;
-        if seq[0] != seq[1] && seq[0] != seq[2] && seq[0] != seq[3] &&
-           seq[1] != seq[2] && seq[1] != seq[3] &&
-           seq[2] != seq[3] {
+    for seq in contents.windows(14) {
+        count += 1;
+        let h: HashSet<&u8> = HashSet::from_iter(seq);
+        if h.len() == 14 {
                 println!("found new seq {:?} at {}", seq, count);
                 break;
-           }
+
+        }
     }
 
     Ok(())
