@@ -1,11 +1,6 @@
 use std::fs;
 use std::io::{self, prelude::*, BufReader};
 
-/*enum Command{
-    Addx(i32),
-    Noop,
-}*/
-
 fn main() -> io::Result<()> {
     // Open the file in read-only mode
     let file = fs::File::open("input10.txt")?;
@@ -26,6 +21,7 @@ fn main() -> io::Result<()> {
             _   => panic!(),
         };
     }
+    /*
     let mut x:i32 = 0;
     let mut total: i32 = 0;
     let checkpoints: Vec<usize> = vec![20,60,100,140,180,220];
@@ -37,5 +33,21 @@ fn main() -> io::Result<()> {
     }
 
     println!("signal {}", total);
+    */
+
+    let mut sprite:i32 = 0;
+    let mut clk: usize = 1;
+    for y in 0..6 {
+        for x in 0..40 {
+            sprite += commands[clk];
+            if sprite -1 == x || sprite == x || sprite +1 == x {
+                print!("#");
+            } else {
+                print!(" ");
+            }
+            clk = clk + 1;
+        }
+        println!("");
+    }
     Ok(())
 }
