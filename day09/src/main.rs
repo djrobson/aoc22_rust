@@ -28,15 +28,15 @@ fn pull_direction(head: Coord, tail: Coord) -> Coord {
     match (dx, dy) {
         (0,0) | (0,1) | (0,-1) |
         (1,0) | (1,1) | (1,-1) |
-        (-1,0)|(-1,1) |(-1,-1) => Coord(0,0),
-        (2,0)  => Coord(1,0),
-        (-2,0) => Coord(-1,0),
-        (0,2)  => Coord(0,1),
-        (0,-2) => Coord(0,-1),
-        (2,1)  | (1,2)  => Coord(1,1),
-        (2,-1) | (1,-2) => Coord(1,-1),
-        (-2,1) | (-1,2) => Coord(-1,1),
-        (-2,-1)|(-1,-2) => Coord(-1,-1),
+        (-1,0)|(-1,1) |(-1,-1)   => Coord(0,0),
+        (2,0)                    => Coord(1,0),
+        (-2,0)                   => Coord(-1,0),
+        (0,2)                    => Coord(0,1),
+        (0,-2)                   => Coord(0,-1),
+        (2,1)  | (1,2)  | (2,2 ) => Coord(1,1),
+        (2,-1) | (1,-2) | (2,-2) => Coord(1,-1),
+        (-2,1) | (-1,2) | (-2,2) => Coord(-1,1),
+        (-2,-1)|(-1,-2) | (-2,-2)=> Coord(-1,-1),
         _     => panic!(),
     }
 }
@@ -51,8 +51,11 @@ fn main() -> io::Result<()> {
     // Create a new vec to store the contents of the file
     let mut visited: HashSet<Coord> = HashSet::new();
 
-    let mut head = Coord(0,0);
-    let mut tail = Coord(0,0);
+    let mut snake:Vec<Coord> = Vec::new();
+    let snake_len = 10;
+    for _ in 0..snake_len {
+        snake.push(Coord(0,0));
+    }
     
     for line in reader.lines() {
         let l = line.unwrap();
@@ -66,9 +69,11 @@ fn main() -> io::Result<()> {
         };
         let count:i32 = count_str.parse().unwrap();
         for _ in 0..count {
-            head = head + delta;
-            tail = tail + pull_direction(head, tail);
-            visited.insert(tail);
+            snake[0] = snake[0] + delta;
+            for n in 1..snake_len {
+                snake[n] = snake[n] + pull_direction(snake[n-1], snake[n]);
+            }
+            visited.insert(snake[snake_len-1]);
         }
     }
 
