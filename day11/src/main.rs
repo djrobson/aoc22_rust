@@ -115,21 +115,24 @@ fn main() -> () {
         )
     }
 
-    let item_count: usize = monkeys.iter().map(|m| m.items.len()).sum();
+    //let item_count: usize = monkeys.iter().map(|m| m.items.len()).sum();
     let mut m_count = vec![0;monkeys.len()];
     let mut target_list: HashMap<usize, Vec<usize>> = HashMap::new();
+    for c in 0..monkeys.len() {
+        target_list.insert(c, vec![]);
+    }
+
     for _ in 0..20 {
-        //assert!(m_count.iter().sum::<usize>() == c*item_count);
         for m in &mut monkeys {
             // gather any previous tosses
-            m.items.extend(target_list.get(&m.id).unwrap_or(&vec![]));
+            m.items.extend(target_list.get(&m.id).unwrap());
+            // clear the list for this monkey
             target_list.insert(m.id, vec![]);
 
             while let Some(item) = m.items.pop_front() {
-                let mut worry = (m.op)(item);
-                worry = worry/3;
+                let worry = (m.op)(item) / 3;
                 m_count[(m.pred)(worry)] += 1;
-                target_list.entry((m.pred)(worry)).or_insert(vec![]).push(worry);
+                target_list.get_mut(&(m.pred)(worry)).unwrap().push(worry);
             }
         }
     }
