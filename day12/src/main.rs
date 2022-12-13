@@ -2,7 +2,7 @@ use pathfinding;
 
 use pathfinding::prelude::bfs;
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct Pos(usize, usize);
 
 impl Pos {
@@ -38,7 +38,7 @@ fn parse_input(input: &str) -> Vec<Vec<u8>> {
         let mut l = Vec::new();
         for c in line.as_bytes() {
             if c == &b'S' {
-                l.push(b'a'-1);
+                l.push(b'a');
             } else if c == &b'E' {
                 l.push(b'z' + 1);
             } else {
@@ -59,25 +59,57 @@ fn find_symbol(grid: &Vec<Vec<u8>> , sym: u8) -> Pos {
     }
     panic!("didn't find sym {}", sym);
 }
+fn find_symbols(grid: &Vec<Vec<u8>> , sym: u8) -> Vec<Pos> {
+    let mut found = Vec::new();
+    for y in 0..grid.len() {
+        for x in 0..grid[0].len() {
+            if grid[y][x] == sym {
+                found.push(Pos(x,y));
+            }
+        }
+    }
+    found
+}
  
  // flood outwards from current value
  // if the next val is present mark that first discovery
  // if flood is finished with no additon then look for val -l...
  
 fn main() {
-    const INPUT: &str = include_str!("../input12.txt");
+    const IS_SAMPLE: bool = false;
+    const INPUT: &str = if IS_SAMPLE {
+        include_str!("../sample.txt")
+    } else {
+        include_str!("../input12.txt")
+    };
     let grid = parse_input(INPUT);
     //let x_len = grid[0].len();
     //let y_len = grid.len();
+    let start = if IS_SAMPLE {
+        Pos(0,0) 
+    } else {
+        Pos(0,20)
+    };
 
-    let start = find_symbol(&grid, b'a'-1);
-    let end = find_symbol(&grid, b'z'+1);
+    println!("starting at {} {}", start.0, start.1);
+    let end = find_symbols(&grid, b'z'+1)[0];
 
-    let result = bfs(&start, |p| p.successors(&grid), |p| *p == end);
+    let starts = find_symbols(&grid, b'a');
 
-    match result {
-        Some(v) => println!("found a vec with len {}", v.len()-1),
-        None => println!("didn't find a solution"),
+    let mut min_len = usize::MAX;
+
+    for start in starts {
+        let result = bfs(&start, |p| p.successors(&grid), |p| *p == end);
+
+        match result {
+            Some(v) => {
+                if v.len() < min_len {
+                    min_len = v.len();
+                }
+            }
+            None => (),
+        }
     }
+    println!("found a vec with len {}", min_len-1)
 
 }
