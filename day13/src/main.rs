@@ -9,12 +9,33 @@ use nom::{
 
 use std::{
     cmp::Ordering::{self, *},
+    fmt::Display,
 };
 
 #[derive(Debug)]
 enum Value {
     Val(u8),
     List(Vec<Value>),
+}
+impl Display for Value {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Value::List(list) => format!(
+                    "[{}]",
+                    list.iter()
+                        .map(|v| v.to_string() )
+                        .collect::<String>()
+                ),
+                Value::Val(num) => num.to_string(),
+            }
+        )
+    }
 }
 
 impl Eq for Value {
@@ -83,14 +104,42 @@ fn main() {
         include_str!("../input13.txt")
     };
 
-    let input = parse_input(INPUT).unwrap().1;
+    let input_pairs = parse_input(INPUT).unwrap().1;
     let mut count = 1;
     let mut total = 0;
-    for pair in input {
+    for pair in &input_pairs {
         let (left, right) = pair;
         if left < right {
             total += count;
         }
         count += 1;
     }
-    println!("step 1 {total}");}
+    println!("step 1 {total}");
+
+
+    let mut all_packets: Vec<Value> = Vec::new();
+    let val4 = Value::List(vec!(Value::List(vec!(Value::Val(2)))));
+    let val6 = Value::List(vec!(Value::List(vec!(Value::Val(6)))));
+    let mut idx4 = 0;
+    let mut idx6 = 0;
+    let mut idx = 1;
+    for (left, right) in input_pairs {
+        all_packets.push(left);
+        all_packets.push(right);
+    }
+    all_packets.push(Value::List(vec!(Value::List(vec!(Value::Val(2))))));
+    all_packets.push(Value::List(vec!(Value::List(vec!(Value::Val(6))))));
+    all_packets.sort();
+
+    for pkt in all_packets {
+        //println!("{idx} is {pkt}");
+        if pkt == val4 {
+            idx4 = idx;
+        } else if pkt == val6 {
+            idx6 = idx;
+        }
+        idx += 1;
+    }
+    println!("decoder key is {}", idx4*idx6);
+
+}
