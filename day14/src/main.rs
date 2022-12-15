@@ -1,7 +1,7 @@
 
 use std::fmt::Display;
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,PartialEq,Debug)]
 enum Voxel {
     Space,
     Rock,
@@ -25,9 +25,36 @@ impl Display for Voxel {
         )
     }
 }
+/*impl Display for Vec<Vec<Voxel>> {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Voxel::Space => ".",
+                Voxel::Rock => "#",
+                Voxel::Sand => "o",
+                Voxel::Void => "X"
+            }
+        )
+    }
+}*/
+
+fn print_cave(cave: &Vec<Vec<Voxel>>, x_range:(i32,i32), y_range: (i32,i32)) -> (){
+    for y in y_range.0..=y_range.1 {
+        for x in x_range.0..=x_range.1 {
+            print!("{}",cave[y as usize][x as usize]);
+        }
+        print!("\n");
+    }
+    //print!("\n");
+}
 
 fn main() {
-    const IS_SAMPLE: bool = true;
+    const IS_SAMPLE: bool = false;
     const INPUT: &str = if IS_SAMPLE {
         include_str!("../sample.txt")
     } else {
@@ -111,12 +138,13 @@ fn main() {
     'sand: loop { // for all failing sand
         let mut x = origin.0;
         let mut y = origin.1;
-        
+
         sand_grains += 1;
 
         // fall until you hit bottom
         'falling: loop {
 
+            //print_cave(&cave, (min_x,max_x),(min_y,max_y));
             // falling down
             if cave[y+1][x] == Voxel::Space {
                 y += 1;
@@ -137,11 +165,17 @@ fn main() {
                     continue 'falling;
                 }
                 // fall center
-                cave[y+1][x] = Voxel::Sand;
+                cave[y][x] = Voxel::Sand;
+                continue 'sand;
             }
-            if cave[y][x] == Voxel::Void {
+            if cave[y][x] == Voxel::Void 
+                || cave[y][x-1] == Voxel::Void 
+                || cave[y][x+1] == Voxel::Void {
                 break 'sand;
             }
+            
+            println!("fell off at ({x},{y}) dropped {sand_grains}");
+            panic!("didn't chose what to do");
         }
     }
     println!("dropped {sand_grains}");
