@@ -12,7 +12,7 @@ struct Monkey {
 
 fn main() -> () {
 
-    let do_sample = true;
+    let do_sample = false;
 
     let mut monkeys: Vec<Monkey> = Vec::new();
     if do_sample {
@@ -117,28 +117,39 @@ fn main() -> () {
 
     //let item_count: usize = monkeys.iter().map(|m| m.items.len()).sum();
     let mut m_count = vec![0;monkeys.len()];
-    let mut target_list: HashMap<usize, Vec<usize>> = HashMap::new();
-    for c in 0..monkeys.len() {
-        target_list.insert(c, vec![]);
-    }
+    //let mut target_list: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut target_list: Vec<Vec<usize>> = vec![vec![];monkeys.len()];
 
-    for _ in 0..20 {
+    for round in 0..20 {
         for m in &mut monkeys {
             // gather any previous tosses
-            m.items.extend(target_list.get(&m.id).unwrap());
+            m.items.extend(target_list[m.id].clone());
             // clear the list for this monkey
-            target_list.insert(m.id, vec![]);
+            target_list[m.id] = vec![];
 
+            // process my items
             while let Some(item) = m.items.pop_front() {
+                m_count[m.id] += 1;
                 let worry = (m.op)(item) / 3;
-                m_count[(m.pred)(worry)] += 1;
-                target_list.get_mut(&(m.pred)(worry)).unwrap().push(worry);
+                target_list[(m.pred)(worry)].push(worry);
             }
         }
+        /*
+        println!("After round {round}:");
+        for idx in 0..monkeys.len() {
+            print!("Monkey {idx}: ");
+            for item in &monkeys[idx].items {
+                print!("{item}, ");
+            }
+            for item in &target_list[idx] {
+                print!("{item}, ");
+            }
+            print!("\n");
+        }*/
     }
 
+    println!("{:?}", m_count);
     m_count.sort();
-
     println!("monkey business {}", m_count[m_count.len()-1] * m_count[m_count.len()-2]);
 
     ()
