@@ -15,6 +15,9 @@ fn main() -> () {
     let do_sample = false;
 
     let mut monkeys: Vec<Monkey> = Vec::new();
+    let step2 = true;
+    let round_count = if step2 {10000} else {20};
+    let divisor = if do_sample {96_577} else {9_699_690};
     if do_sample {
         monkeys.push( 
             Monkey{
@@ -120,7 +123,7 @@ fn main() -> () {
     //let mut target_list: HashMap<usize, Vec<usize>> = HashMap::new();
     let mut target_list: Vec<Vec<usize>> = vec![vec![];monkeys.len()];
 
-    for round in 0..20 {
+    for round in 1..=round_count {
         for m in &mut monkeys {
             // gather any previous tosses
             m.items.extend(target_list[m.id].clone());
@@ -130,7 +133,10 @@ fn main() -> () {
             // process my items
             while let Some(item) = m.items.pop_front() {
                 m_count[m.id] += 1;
-                let worry = (m.op)(item) / 3;
+                let mut worry = (m.op)(item) % divisor;
+                if !step2 {
+                    worry = worry / 3;
+                }
                 target_list[(m.pred)(worry)].push(worry);
             }
         }
@@ -146,11 +152,14 @@ fn main() -> () {
             }
             print!("\n");
         }*/
+        if 0 == round % 1000 || round == 20 || round == 1{
+            println!("after round {round} {:?}", m_count);
+        }
     }
 
     println!("{:?}", m_count);
     m_count.sort();
-    println!("monkey business {}", m_count[m_count.len()-1] * m_count[m_count.len()-2]);
+    println!("monkey business {}", m_count[m_count.len()-1] as usize * m_count[m_count.len()-2] as usize);
 
     ()
 }
