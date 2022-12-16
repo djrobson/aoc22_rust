@@ -44,11 +44,16 @@ fn manhattan_range_for_row(coord: (i32,i32), row: i32, distance: i32) -> Option<
     //}
     Some((x-left_over, x+left_over))
 }
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 const EXPECTED_ROW: i32 = if IS_SAMPLE {
     10  
 } else {
     2000000
+};
+const CAVE_RANGE: i32 = if IS_SAMPLE {
+    20 
+}else {
+    4_000_000
 };
 
 fn step1(sensor_beacon_pairs: Vec<Pair>) -> () {
@@ -87,6 +92,49 @@ fn step1(sensor_beacon_pairs: Vec<Pair>) -> () {
 
 }
 
+fn step2(sensor_beacon_pairs: Vec<Pair>) -> () {
+    //let mut empty_in_row = 0;
+    for urow in 0..=CAVE_RANGE {
+        let row = CAVE_RANGE - urow;
+        let mut ranges: Vec<(i32,i32)> = Vec::new();
+        for pair in &sensor_beacon_pairs {
+            let sensor= &pair.sensor;
+            let distance = &pair.distance;
+            if let Some(range) = manhattan_range_for_row(*sensor, row, *distance) {
+                ranges.push(range);
+            }
+        }
+        if row == 957210 {
+            println!("here");
+        }
+        ranges.sort();
+        let _range = ranges.into_iter().reduce(|a,b| {
+            //println!("Comparing ({},{}) to ({},{})", a.0,a.1,b.0,b.1);
+            // as .. bs .. ae .. be
+            if a.0 < b.0 && a.1 >= b.0 && a.1 <= b.1 {
+                (a.0,b.1)
+            } // bs .. as .. be .. ae
+            else if b.0 < a.0 && b.1 >= a.0 && b.1 <= a.1 {
+                (b.0,a.1)
+            } // as .. bs .. be .. ae
+            else if a.0 <= b.0 && a.1 >= b.1 {
+                (a.0,a.1)
+            } // bs .. as .. ae .. be
+            else if b.0 <= a.0 && b.1 >= a.1 {
+                (b.0,b.1)
+            } // as .. ae .. bs .. be || bs .. be .. as .. ae
+            else {
+                println!("Comparing ({},{}) to ({},{})", a.0,a.1,b.0,b.1);
+                println!("found gap at X {} Y {row} with tunning {}", a.1+1, ((a.1+1) as usize * 4_000_000) + row as usize);
+                panic!("program done");
+            }
+        });
+    }
+
+    // plus 1 for the 0 index, -1 for the beacon
+    //println!("found range {:?} with {} empty spots in row {EXPECTED_ROW}",range, range.1-range.0);
+
+}
 
 fn main() {
     const INPUT: &str = if IS_SAMPLE {
@@ -153,5 +201,5 @@ fn main() {
     }
     println!("Found {} sensor beacon pairs", sensor_beacon_pairs.len());
     println!("({min_x},{min_y}) to ({max_x},{max_y}) max dist {max_dist}");
-    step1(sensor_beacon_pairs);
+    step2(sensor_beacon_pairs);
 }
