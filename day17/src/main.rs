@@ -1,4 +1,5 @@
-const IS_SAMPLE: bool = true;
+use std::fmt;
+const IS_SAMPLE: bool = false;
 const WIDTH: usize = 7;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -8,17 +9,30 @@ enum Direction {
     Down,
 }
 
-fn print_chamber_range( chamber: & Vec<Vec<u8>>, top: usize, bottom: usize) {
+#[derive(PartialEq,Eq,Clone,Copy)]
+enum Space {
+    Empty,
+    Ground,
+    Rock,
+}
+
+impl fmt::Display for Space {
+    fn fmt (&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Rock => write!(f,"@"),
+            Ground => write!(f,"#"),
+            Empty => write!(f,"."),
+        }
+    }
+}
+
+use Space::*;
+
+fn print_chamber_range( chamber: & Vec<Vec<Space>>, top: usize, bottom: usize) {
     for r in (bottom..=top).rev() {
         print!("|");
         for c in &chamber[r] {
-            if *c == 1 {
-                print!("@");
-            } else if *c == 2 {
-                print!("#");
-            } else {
-                print!(".")
-            }
+            print!("{}", c);
         }
         print!("|\n");
     }
@@ -27,26 +41,26 @@ fn print_chamber_range( chamber: & Vec<Vec<u8>>, top: usize, bottom: usize) {
     }
 }
 
-fn print_chamber( chamber: & Vec<Vec<u8>>) {
+fn print_chamber( chamber: & Vec<Vec<Space>>) {
     print_chamber_range(chamber, chamber.len()-1, 0);
 }
 
-fn set_shape_at_coord( chamber: &mut Vec<Vec<u8>>, shape: &Vec<Vec<u8>>, coords: (i32,i32), new_val: u8) -> () {
+fn set_shape_at_coord( chamber: &mut Vec<Vec<Space>>, shape: &Vec<Vec<Space>>, coords: (i32,i32), new_val: Space) -> () {
     let shape_height = shape.len();
     let shape_width = shape[0].len();
     for sy in 0..shape_height { // for each verticle row in the shape
         for sx in 0..shape_width {
-            if shape[sy][sx] == 1 { // check the shape bitmap
+            if shape[sy][sx] == Rock { // check the shape bitmap
                 let x = (coords.0) as usize + sx;
                 let y = coords.1 as usize - sy;
-                println!("chamber at x={x} y={y} was {} now {}", chamber[y][x], new_val );
+                //println!("chamber at x={x} y={y} was {} now {}", chamber[y][x], new_val );
                 chamber[y][x] = new_val;
             }
         }
     }
 }
 
-fn attempt_shift( chamber: &mut Vec<Vec<u8>>, direction: Direction, shape: &Vec<Vec<u8>>, coords: &mut (i32,i32)) -> bool {
+fn attempt_shift( chamber: &mut Vec<Vec<Space>>, direction: Direction, shape: &Vec<Vec<Space>>, coords: &mut (i32,i32)) -> bool {
     let shape_height = shape.len();
     let shape_width = shape[0].len();
     match direction {
@@ -58,16 +72,16 @@ fn attempt_shift( chamber: &mut Vec<Vec<u8>>, direction: Direction, shape: &Vec<
             // check for collision
             for sy in 0..shape_height { // for each verticle row in the shape
                 for sx in 0..shape_width {
-                    if shape[sy][sx] == 1 {
-                        if chamber[coords.1 as usize -sy][(coords.0-1) as usize + sx] == 2 {
+                    if shape[sy][sx] == Rock {
+                        if chamber[coords.1 as usize -sy][(coords.0-1) as usize + sx] == Ground {
                             return false;
                         }
                     }
                 }
             }
-            set_shape_at_coord(chamber, shape, *coords, 0);
+            set_shape_at_coord(chamber, shape, *coords, Empty);
             *coords = (coords.0 -1, coords.1);
-            set_shape_at_coord(chamber, shape, *coords, 1);
+            set_shape_at_coord(chamber, shape, *coords, Rock);
         },
         Direction::Right => {
             // if we're on the right wall then fail
@@ -77,112 +91,131 @@ fn attempt_shift( chamber: &mut Vec<Vec<u8>>, direction: Direction, shape: &Vec<
             // check for collision
             for sy in 0..shape_height { // for each verticle row in the shape
                 for sx in 0..shape_width {
-                    if shape[sy][sx] == 1 {
-                        if chamber[coords.1 as usize - sy][(coords.0+1) as usize + sx] == 2 {
+                    if shape[sy][sx] == Rock {
+                        if chamber[coords.1 as usize - sy][(coords.0+1) as usize + sx] == Ground {
                             return false;
                         }
                     }
                 }
             }
-            set_shape_at_coord(chamber, shape, *coords, 0);
+            set_shape_at_coord(chamber, shape, *coords, Empty);
             *coords = (coords.0 +1, coords.1);
-            set_shape_at_coord(chamber, shape, *coords, 1);
+            set_shape_at_coord(chamber, shape, *coords, Rock);
         },
         Direction::Down => {
             // if we're on the bottom then fail
-            if coords.1 - shape_height as i32 <= 0 {
-                set_shape_at_coord(chamber, shape, *coords, 2);
+            if coords.1 - shape_height as i32 + 1 <= 0 {
+                set_shape_at_coord(chamber, shape, *coords, Ground);
                 return false;
             }
             // check for collision
-            for sy in 0..shape_height { // for each verticle row in the shape
+            let mut collided = false;
+            'down_collide: for sy in 0..shape_height { // for each verticle row in the shape
                 for sx in 0..shape_width {
-                    if shape[sy][sx] == 1 {
-                        if chamber[(coords.1 -1) as usize - sy][(coords.0) as usize + sx] == 2 {
-                            return false;
+                    if shape[sy][sx] == Rock {
+                        if chamber[(coords.1 -1) as usize - sy][(coords.0) as usize + sx] == Ground {
+                            collided = true;
+                            break 'down_collide;
                         }
                     }
                 }
             }
-            set_shape_at_coord(chamber, shape, *coords, 0);
-            *coords = (coords.0, coords.1 -1);
-            set_shape_at_coord(chamber, shape, *coords, 1);
+            if collided {
+                set_shape_at_coord(chamber, shape, *coords, Ground);
+            } else {
+                set_shape_at_coord(chamber, shape, *coords, Empty);
+                *coords = (coords.0, coords.1 -1);
+                set_shape_at_coord(chamber, shape, *coords, Rock);
+            }
+            return !collided;
         },
     }
     true
 }
+
+fn find_tallest_rock(chamber: &Vec<Vec<Space>>) -> usize {
+    let mut tallest_rock = 0;
+    for row in chamber {
+        if row.iter().all(|s| *s ==  Empty) {
+            break;
+        } else {
+            tallest_rock += 1;
+        }
+    }
+    tallest_rock
+}
 fn main() {
+
+    // initialize wind list
     let input: Vec<Direction> = if IS_SAMPLE {
             b">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
         } else {
             include_str!("../input17.txt").as_bytes()
         }.iter()
         .map(|c| if *c == b'>' {
-            Direction::Right
-        } else if *c == b'<' {
-            Direction::Left
-        } else {
-            panic!("unexpected input direction")
-        }).collect();
+                Direction::Right
+            } else if *c == b'<' {
+                Direction::Left
+            } else {
+                panic!("unexpected input direction")
+            })
+        .collect();
 
+    // how many rocks should we drop?
     const TOTAL_ROCKS: usize = if IS_SAMPLE {
-        9
+        2022
     } else {
-        2023
+        2022
     };
 
+    // create the shapes
     const VSPACE: usize = 3;
-    let shapes: Vec<Vec<Vec<u8>>> = vec![
-        vec![vec![1,1,1,1]], // hline
-        vec![vec![0,1,0],vec![1,1,1],vec![0,1,0]], // cross
-        vec![vec![0,0,1],vec![0,0,1],vec![1,1,1]], // elbow
-        vec![vec![1],vec![1],vec![1],vec![1]], // vline
-        vec![vec![1,1],vec![1,1]], // square
+    let shapes: Vec<Vec<Vec<Space>>> = vec![
+        vec![vec![Rock,Rock,Rock,Rock]], // hline
+        vec![vec![Empty,Rock,Empty],vec![Rock,Rock,Rock],vec![Empty,Rock,Empty]], // cross
+        vec![vec![Empty,Empty,Rock],vec![Empty,Empty,Rock],vec![Rock,Rock,Rock]], // elbow
+        vec![vec![Rock],vec![Rock],vec![Rock],vec![Rock]], // vline
+        vec![vec![Rock,Rock],vec![Rock,Rock]], // square
     ];
 
-    let mut chamber: Vec<Vec<u8>> = Vec::new();
+    // initialize the world
+    let mut chamber: Vec<Vec<Space>> = Vec::new();
     let mut wind_index = 0;
     let mut rock_count = 0;
 
+    // for every rock we drop...
     loop {
-        // if total rocks == 2023
         if rock_count == TOTAL_ROCKS {
             break;
         }
 
-        // add 3 rows
-        let mut empty_rows: usize = 0;
-        for row in chamber.iter().rev() {
-            if row.iter().all(|s| *s ==  0) {
-                empty_rows += 1;
-            } else {
-                break;
-            }
-        }
+        let rock_idx = rock_count % shapes.len();
+        let tallest_rock = find_tallest_rock(&chamber);
+        let mut shape_top_left = (2, tallest_rock as i32 + (shapes[rock_idx].len()) as i32 - 1 + VSPACE as i32);
 
-        for _r in empty_rows..VSPACE {
-            chamber.push(vec![0;WIDTH]);
+        // pad the chamber with empty lines so we have a place to put the rock
+        while chamber.len() <= shape_top_left.1 as usize{
+            chamber.push(vec![Empty;WIDTH]);
         }
 
         // add next rock
-        let rock_idx = rock_count % shapes.len();
-        let mut shape_top_left = (2, (chamber.len() -1) as i32 + (shapes[rock_idx].len() -1) as i32);
+        let mut row_count = 0;
         for line in shapes[rock_idx].iter().rev() { // consider pre-flipping?
-            let mut padded_line: Vec<u8> = Vec::new();
-            padded_line.push(0);
-            padded_line.push(0);
+            let mut padded_line: Vec<Space> = Vec::new();
+            padded_line.push(Empty);
+            padded_line.push(Empty);
             padded_line.append(&mut line.clone());
             while padded_line.len() < WIDTH {
-                padded_line.push(0);
+                padded_line.push(Empty);
             }
-            chamber.push(padded_line);
+            chamber[tallest_rock + VSPACE + row_count] = padded_line;
+            row_count += 1;
         }
 
         'rock_movement: loop {
     
-            print_chamber(&chamber);
             // puff of air
-            attempt_shift(&mut chamber, input[wind_index], &shapes[rock_idx], &mut shape_top_left);
+            attempt_shift(&mut chamber, input[wind_index%input.len()], &shapes[rock_idx], &mut shape_top_left);
             wind_index += 1;
             // decend one
             if !attempt_shift(&mut chamber, Direction::Down, &shapes[rock_idx], &mut shape_top_left) {// down
@@ -191,17 +224,8 @@ fn main() {
             }
         }
         rock_count += 1;
+        //print_chamber(&chamber);
     }
 
-    let mut empty_rows: usize = 0;
-    loop {
-        if let Some(row) = chamber.get(chamber.len() - empty_rows) {
-            if row.iter().all(|s| *s ==  0) {
-                empty_rows += 1;
-            } else {
-                break;
-            }
-        }
-    }
-    println!("chamber is {} rows tall, {} have content", chamber.len(), chamber.len()-empty_rows);
+    println!("chamber is {} rows tall, {} have content", chamber.len(), find_tallest_rock(&chamber));
 }
