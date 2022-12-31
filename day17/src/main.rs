@@ -1,5 +1,5 @@
 use std::fmt;
-const IS_SAMPLE: bool = false;
+const IS_SAMPLE: bool = true;
 const WIDTH: usize = 7;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -34,7 +34,7 @@ fn print_chamber_range( chamber: & Vec<Vec<Space>>, top: usize, bottom: usize) {
         for c in &chamber[r] {
             print!("{}", c);
         }
-        print!("|\n");
+        print!("| {}\n", r);
     }
     if bottom == 0 {
         println!("+-------+");
@@ -144,30 +144,8 @@ fn find_tallest_rock(chamber: &Vec<Vec<Space>>) -> usize {
     }
     tallest_rock
 }
-fn main() {
-
-    // initialize wind list
-    let input: Vec<Direction> = if IS_SAMPLE {
-            b">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
-        } else {
-            include_str!("../input17.txt").as_bytes()
-        }.iter()
-        .map(|c| if *c == b'>' {
-                Direction::Right
-            } else if *c == b'<' {
-                Direction::Left
-            } else {
-                panic!("unexpected input direction")
-            })
-        .collect();
-
-    // how many rocks should we drop?
-    const TOTAL_ROCKS: usize = if IS_SAMPLE {
-        2022
-    } else {
-        2022
-    };
-
+fn run_cycle(input: &Vec<Direction>, cycle_count: usize) -> usize{
+    
     // create the shapes
     const VSPACE: usize = 3;
     let shapes: Vec<Vec<Vec<Space>>> = vec![
@@ -185,7 +163,9 @@ fn main() {
 
     // for every rock we drop...
     loop {
-        if rock_count == TOTAL_ROCKS {
+
+        if rock_count == cycle_count {
+            println!("stopped at rock {} with idx {}", rock_count, rock_count % shapes.len());
             break;
         }
 
@@ -218,14 +198,68 @@ fn main() {
             attempt_shift(&mut chamber, input[wind_index%input.len()], &shapes[rock_idx], &mut shape_top_left);
             wind_index += 1;
             // decend one
-            if !attempt_shift(&mut chamber, Direction::Down, &shapes[rock_idx], &mut shape_top_left) {// down
+            if !attempt_shift(&mut chamber, Direction::Down, &shapes[rock_idx], &mut shape_top_left) {
                 // we hit bottom, leave it here
                 break 'rock_movement;
             }
         }
         rock_count += 1;
+        if wind_index % input.len() == 0 {
+            if rock_count % shapes.len() == 0 {
+                panic!("found a cycle at {}", rock_count);
+            }
+        }
         //print_chamber(&chamber);
     }
 
-    println!("chamber is {} rows tall, {} have content", chamber.len(), find_tallest_rock(&chamber));
+    //if chamber.len() > 320 {
+    //    print_chamber_range(&chamber, chamber.len()-1, chamber.len() - 320);
+    //} else {
+    //    print_chamber(&chamber);
+    //}
+    let tallest_rock = find_tallest_rock(&chamber);
+    println!("dropped {} rocks, chamber is {} rows tall, {} have content", cycle_count, chamber.len(), tallest_rock);
+    tallest_rock
+}
+fn main() {
+
+    // initialize wind list
+    let input: Vec<Direction> = if IS_SAMPLE {
+            b">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"
+        } else {
+            include_str!("../input17.txt").as_bytes()
+        }.iter()
+        .map(|c| if *c == b'>' {
+                Direction::Right
+            } else if *c == b'<' {
+                Direction::Left
+            } else {
+                panic!("unexpected input direction")
+            })
+        .collect();
+
+    // how many rocks should we drop?
+    //let total_rocks: usize = 10;
+    //let total_rocks: usize = 200;
+    //let total_rocks: usize = 2_022;
+    let total_rocks: usize = 1_000_000_000_000;
+    //let cycle_size = input.len() * 5 * 2;
+
+    let cycle_size = total_rocks;
+
+    let height = if total_rocks <= cycle_size {
+        println!("running one test with {} total rocks", total_rocks);
+        run_cycle(&input, total_rocks)
+    } else {
+        println!("running one test with {} total rocks", cycle_size);
+        let cycle_height = run_cycle(&input, cycle_size);
+        let cycle_count = total_rocks/cycle_size;
+        let remainder = total_rocks - (cycle_count*cycle_size);
+
+        println!("running a second test with {} total rocks", remainder);
+        let total = cycle_count * cycle_height + run_cycle(&input, remainder);
+        total
+    };
+    println!("{}", height);
+      
 }
