@@ -1,6 +1,10 @@
 use std::fmt;
-const IS_SAMPLE: bool = true;
+use std::collections::HashMap;
+
+const IS_SAMPLE: bool = false;
 const WIDTH: usize = 7;
+
+const TOTAL_ROCKS: usize = 1_000_000_000_000;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Direction {
@@ -144,7 +148,7 @@ fn find_tallest_rock(chamber: &Vec<Vec<Space>>) -> usize {
     }
     tallest_rock
 }
-fn run_cycle(input: &Vec<Direction>, cycle_count: usize) -> usize{
+fn run_cycle(input: &Vec<Direction>, total_rocks_to_drop: usize) -> usize{
     
     // create the shapes
     const VSPACE: usize = 3;
@@ -160,11 +164,27 @@ fn run_cycle(input: &Vec<Direction>, cycle_count: usize) -> usize{
     let mut chamber: Vec<Vec<Space>> = Vec::new();
     let mut wind_index = 0;
     let mut rock_count = 0;
+    let mut cycle_search: HashMap<(usize,usize,u32), (usize,usize)> = HashMap::new();
+
+    //  start -> initial rock count -> height
+    let mut initial_rocks = 0;
+    let mut initial_height = 0;
+    //  cycle -> rocks per cycle -> height per cycle
+    let mut cycles_to_skip = 0;
+    let mut rocks_per_cycle = 0;
+    let mut height_per_cycle = 0;
+    //  remaining rocks -> total rocks - (rocks per cyle * cycles) - initial rock count
+    let mut remaining_rocks = 0;
+    //  remaining height -> remaining rocks past start of cycle -> height
+    let mut remaining_height = 0;
+    // total height = initial height + (height per cycle * cycle)  + remaining height
+    let mut height_skipped = 0;
+    let mut cycle_found = false;
 
     // for every rock we drop...
     loop {
 
-        if rock_count == cycle_count {
+        if rock_count == total_rocks_to_drop {
             println!("stopped at rock {} with idx {}", rock_count, rock_count % shapes.len());
             break;
         }
@@ -204,9 +224,74 @@ fn run_cycle(input: &Vec<Direction>, cycle_count: usize) -> usize{
             }
         }
         rock_count += 1;
-        if wind_index % input.len() == 0 {
-            if rock_count % shapes.len() == 0 {
-                panic!("found a cycle at {}", rock_count);
+
+        let current_height = find_tallest_rock(&chamber);
+        if current_height > 4 {
+
+            if !cycle_found {
+                
+                let row1:u8 = chamber[current_height].iter().enumerate()
+                .map(|(a,b)| {
+                    if b != &Empty {
+                        1 << a
+                    } else {
+                        0
+                    }
+                    })
+                .fold(0, |acc, a| acc | a);
+            let row2:u8 = chamber[current_height-1].iter().enumerate()
+                .map(|(a,b)| {
+                    if b != &Empty {
+                        1 << a
+                    } else {
+                        0
+                    }
+                    })
+                .fold(0, |acc, a| acc | a);
+            let row3:u8 = chamber[current_height-2].iter().enumerate()
+                .map(|(a,b)| {
+                    if b != &Empty {
+                        1 << a
+                    } else {
+                        0
+                    }
+                    })
+                .fold(0, |acc, a| acc | a);
+            let row4:u8 = chamber[current_height-3].iter().enumerate()
+                .map(|(a,b)| {
+                    if b != &Empty {
+                        1 << a
+                    } else {
+                        0
+                    }
+                    })
+                .fold(0, |acc, a| acc | a);
+                let key = (wind_index % input.len(), rock_count % shapes.len(), 
+                    (row1 as u32) << 24 | 
+                    (row2 as u32) << 16| 
+                    (row3 as u32) << 8 |
+                    (row4 as u32));
+                if cycle_search.contains_key(&key) {
+                    cycle_found = true;
+                    print_chamber_range(&chamber, chamber.len()-1, chamber.len() - 10 );
+                    println!("found cycle at height: {}, wind: {wind_index} rock: {rock_count} previously seen at rock {} with height {}", 
+                        current_height, cycle_search.get(&key).unwrap().0,cycle_search.get(&key).unwrap().1 );
+                    initial_rocks = cycle_search.get(&key).unwrap().0;
+                    initial_height = cycle_search.get(&key).unwrap().1;
+                    rocks_per_cycle = rock_count - cycle_search.get(&key).unwrap().0;
+                    height_per_cycle = current_height- cycle_search.get(&key).unwrap().1;
+                    cycles_to_skip = ((total_rocks_to_drop - current_height) / rocks_per_cycle); // we already found one cycle
+                    height_skipped = cycles_to_skip * height_per_cycle;
+                    println!("cycle rocks: {rocks_per_cycle}, cycle height: {height_per_cycle}, skipping {cycles_to_skip} cycles with {} rocks and height {height_skipped}", (rocks_per_cycle * cycles_to_skip) );
+                    println!("cycle started at {initial_height} repeated at {current_height} then repeated until height {height_skipped}");
+
+                    remaining_rocks = total_rocks_to_drop - (rocks_per_cycle * cycles_to_skip) - rock_count;
+                    println!("continuing for {remaining_rocks} more rocks");
+                    rock_count = total_rocks_to_drop - remaining_rocks;
+
+                } else {
+                    cycle_search.insert(key, (rock_count, find_tallest_rock(&chamber)));
+                }
             }
         }
         //print_chamber(&chamber);
@@ -218,8 +303,8 @@ fn run_cycle(input: &Vec<Direction>, cycle_count: usize) -> usize{
     //    print_chamber(&chamber);
     //}
     let tallest_rock = find_tallest_rock(&chamber);
-    println!("dropped {} rocks, chamber is {} rows tall, {} have content", cycle_count, chamber.len(), tallest_rock);
-    tallest_rock
+    println!("dropped {} rocks, chamber is {} rows tall, {} have content, skipped {height_skipped}", total_rocks_to_drop, chamber.len(), tallest_rock);
+    tallest_rock + height_skipped
 }
 fn main() {
 
@@ -242,24 +327,23 @@ fn main() {
     //let total_rocks: usize = 10;
     //let total_rocks: usize = 200;
     //let total_rocks: usize = 2_022;
-    let total_rocks: usize = 1_000_000_000_000;
     //let cycle_size = input.len() * 5 * 2;
 
-    let cycle_size = total_rocks;
+    let cycle_size = TOTAL_ROCKS;
 
-    let height = if total_rocks <= cycle_size {
-        println!("running one test with {} total rocks", total_rocks);
-        run_cycle(&input, total_rocks)
-    } else {
+    //let height = if total_rocks <= cycle_size {
+    //    println!("running one test with {} total rocks", TOTAL_ROCKS);
+    //    run_cycle(&input, total_rocks)
+    //} else {
         println!("running one test with {} total rocks", cycle_size);
-        let cycle_height = run_cycle(&input, cycle_size);
-        let cycle_count = total_rocks/cycle_size;
-        let remainder = total_rocks - (cycle_count*cycle_size);
+        let height = run_cycle(&input, cycle_size);
+        //let cycle_count = total_rocks/cycle_size;
+        //let remainder = total_rocks - (cycle_count*cycle_size);
 
-        println!("running a second test with {} total rocks", remainder);
-        let total = cycle_count * cycle_height + run_cycle(&input, remainder);
-        total
-    };
+        //println!("running a second test with {} total rocks", remainder);
+        //let total = cycle_count * cycle_height + run_cycle(&input, remainder);
+        //total
+    //};
     println!("{}", height);
       
 }
