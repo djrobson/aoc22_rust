@@ -14,10 +14,20 @@ enum Op {
     Sub,
     Mul,
     Div,
+    Eq,
 }
+
+static mut humn_max:isize  = 245167969204648;
+static mut humn:isize  = 0;
+static mut humn_min:isize  = -245167969204648;
 
 fn calc_value(monkeys: &mut HashMap<String,Val>, name: String) -> isize {
     let my_val;
+    if name.eq("humn") {
+        unsafe {
+            return humn;
+        }
+    }
     if let Some(val) = monkeys.get(&name) {
         my_val = val.clone();
     } else {
@@ -30,6 +40,26 @@ fn calc_value(monkeys: &mut HashMap<String,Val>, name: String) -> isize {
         Val::Operation(first, Op::Sub, second) => calc_value(monkeys, first.clone()) - calc_value(monkeys, second.clone()),
         Val::Operation(first, Op::Mul, second) => calc_value(monkeys, first.clone()) * calc_value(monkeys, second.clone()),
         Val::Operation(first, Op::Div, second) => calc_value(monkeys, first.clone()) / calc_value(monkeys, second.clone()),
+        Val::Operation(first, Op::Eq, second) => {
+            let mut left = calc_value(monkeys, first.clone());
+            let right = calc_value(monkeys, second.clone());
+            unsafe {
+                while (left != right) {
+                    
+                    if left > right {
+                        humn_min = humn;
+                        humn = humn + ((humn_max - humn) /2);
+                    } else {
+                        humn_max = humn;
+                        humn = (humn_min + humn) /2;
+                    }
+                    
+                    left = calc_value(monkeys, first.clone());
+                    println!("humn {humn_min}<={humn}<={humn_max}, {left} {right}");
+                }
+            }
+            0
+        },
     }
 }
 fn main() {
@@ -63,9 +93,16 @@ fn main() {
         }
     }
 
+    if let Val::Operation(first, _op, second) = monkeys.get("root").unwrap() {
+        let new_op = Val::Operation( first.clone(), Op::Eq, second.clone());
+        monkeys.insert("root".to_string(), new_op);
+    } else {
+        panic!("didnt find root monkey");
+    }
+
     // recurse all the calculations
     let top_node: String = "root".to_string();
-    let p1_total: isize = calc_value(&mut monkeys, top_node);
+    let p2_total: isize = calc_value(&mut monkeys, top_node);
 
-    println!("part1: {p1_total}");
+    println!("part2: {p2_total}");
 }
