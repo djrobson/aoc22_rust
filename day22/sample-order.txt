@@ -1,0 +1,3 @@
+BL BL 1T
+5T 4R 2L
+BL BL 6R 3L
