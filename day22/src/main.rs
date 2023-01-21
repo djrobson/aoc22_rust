@@ -2,30 +2,26 @@ const IS_SAMPLE: bool = true;
 const PHASE: u8 = 1;
 
 struct Input {
-    Grid: &'static str,
-    Dir: &'static str,
-    Order: &'static str,
-    Size: u32
+    grid: &'static str,
+    dir: &'static str,
+    order: &'static str,
+    size: usize,
 }
 
-#[derive(Clone,Copy)]
-enum Phase {
-    One,
-    Two,
-}
-
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum GridVal {
     Space,
     Rock,
     Void,
 }
-#[derive(Clone)]
+#[derive(Clone,Copy)]
 struct GridLocation{
     val: GridVal,
     orig_row: u32,
     orig_cal: u32,
 }
+
+#[derive(Clone,Copy)]
 enum GridOrientation {
     Top(usize),
     Bottom(usize),
@@ -34,11 +30,11 @@ enum GridOrientation {
 }
 use GridOrientation::*;
 
-fn GridOrder(_order: &str, phase: Phase) -> Vec<Vec<GridOrientation>>
+fn grid_order() -> Vec<Vec<GridOrientation>>
 {
     // consider auto discoverying the order from the input
-    let result = match (phase, IS_SAMPLE) {
-        (Phase::One, True) =>
+    let result = match (PHASE, IS_SAMPLE) {
+        (1, true) =>
             vec![
                 vec![Bottom(6), Right(1), Left(1), Top(2)],
                 vec![Bottom(1), Right(4), Left(5), Top(6)],
@@ -47,7 +43,7 @@ fn GridOrder(_order: &str, phase: Phase) -> Vec<Vec<GridOrientation>>
                 vec![Bottom(5), Right(2), Left(4), Top(5)],
                 vec![Bottom(2), Right(3), Left(2), Top(1)],
             ],
-        (Phase::One, False) => 
+        (1, false) => 
             vec![
                 vec![Bottom(6), Right(3), Left(3), Top(2)],
                 vec![Bottom(1), Right(2), Left(2), Top(6)],
@@ -56,7 +52,7 @@ fn GridOrder(_order: &str, phase: Phase) -> Vec<Vec<GridOrientation>>
                 vec![Bottom(4), Right(5), Left(5), Top(4)],
                 vec![Bottom(1), Right(4), Left(4), Top(1)],
             ],
-        (Phase::Two, _) => 
+        (2, _) => 
             vec![
                 vec![Top(5), Left(4), Bottom(3), Right(2)],
                 vec![Top(4), Left(6), Bottom(1), Right(3)],
@@ -65,15 +61,15 @@ fn GridOrder(_order: &str, phase: Phase) -> Vec<Vec<GridOrientation>>
                 vec![Top(1), Left(3), Bottom(4), Right(6)],
                 vec![Top(3), Left(2), Bottom(5), Right(4)],
             ],
+        _ => panic!("unexpected grid order"),
     };
     result
 }
 
-fn parse_grid(input: &str, order: &Vec<Vec<Option<GridOrientation>>>, size: u32) -> Vec<Vec<Vec<GridLocation>>> {
+fn parse_grid(input: &str, order: &Vec<Vec<Option<GridOrientation>>>, size: usize) -> Vec<Vec<Vec<GridLocation>>> {
 
     // parse the grid in it's original shape
-    let mut big_grid: Vec<Vec<Vec<GridLocation>>> = Vec::new();
-    big_grid.insert(0, Vec::new());
+    let mut big_grid: Vec<Vec<Vec<GridLocation>>> = vec![Vec::new();7];
     let mut row = 0;
     for line in input.split('\n') {
         let chars = line
@@ -98,8 +94,20 @@ fn parse_grid(input: &str, order: &Vec<Vec<Option<GridOrientation>>>, size: u32)
     // break the grid into panels
     for row in 0..order.len() {
         for g in 0..order[row].len() {
+            let row_start = row * size as usize;
+            let col_start = g*size as usize;
+            let mut face_row = 0;
             match order[row][g] {
-                Some(Top(side)) => todo!(),
+                Some(Top(side)) => {
+                    for input_row in row_start..(row_start+size as usize) {
+                        big_grid[side].insert(face_row, Vec::new());
+                        for input_col in col_start..(col_start+ size as usize) {
+                            let grid_val = big_grid[0][input_row][input_col].clone();
+                            big_grid[side][face_row].push(grid_val);
+                        }
+                        face_row +=1;
+                    }
+                },
                 Some(Left(side)) => todo!(),
                 Some(Right(side)) => todo!(),
                 Some(Bottom(side)) => todo!(),
@@ -110,20 +118,20 @@ fn parse_grid(input: &str, order: &Vec<Vec<Option<GridOrientation>>>, size: u32)
     big_grid
 }
 
-fn parse_order(input: &str, phase: Phase) -> Vec<Vec<Option<GridOrientation>>> {
+fn parse_order(input: &str) -> Vec<Vec<Option<GridOrientation>>> {
     let mut output: Vec<Vec<Option<GridOrientation>>> = Vec::new();
     for line in input.lines() {
         let orientations = line
             .split_whitespace()
             .map(|pair| (pair.as_bytes()[0], pair.as_bytes()[1]))
             .map(|(side, orientation)| {
-                match (side,orientation,phase) {
+                match (side,orientation,PHASE) {
                     (b'B',_,_) => None,
-                    (side, _, Phase::One) => Some(GridOrientation::Top(side as usize)),
-                    (side, b'T', Phase::Two) => Some(GridOrientation::Top(side as usize)),
-                    (side, b'R', Phase::Two) => Some(GridOrientation::Right(side as usize)),
-                    (side, b'L', Phase::Two) => Some(GridOrientation::Left(side as usize)),
-                    (side, b'B', Phase::Two) => Some(GridOrientation::Bottom(side as usize)),
+                    (side, _, 1) => Some(GridOrientation::Top((side - b'0') as usize)),
+                    (side, b'T', 2) => Some(GridOrientation::Top((side - b'0') as usize)),
+                    (side, b'R', 2) => Some(GridOrientation::Right((side - b'0') as usize)),
+                    (side, b'L', 2) => Some(GridOrientation::Left((side - b'0') as usize)),
+                    (side, b'B', 2) => Some(GridOrientation::Bottom((side - b'0') as usize)),
                     _ => panic!("unexpected order"),
                 }
             }).collect();
@@ -181,6 +189,7 @@ enum Facing {
     Right,
     Bottom,
 }
+#[derive(Copy, Clone)]
 struct Location {
     x: usize,
     y: usize,
@@ -197,7 +206,7 @@ impl Location {
             Facing::Top => 3,
         }
     }
-    fn turn(&mut self, dir: Direction) {
+    fn turn(&mut self, dir: &Direction) {
         match (self.facing, dir) {
             (Facing::Top, TurnLeft) => self.facing = Facing::Left,
             (Facing::Top, TurnRight) => self.facing = Facing::Right,
@@ -243,13 +252,49 @@ impl Location {
     }
 }
 
-fn perform_walk(order: Vec<Vec<Option<GridOrientation>>>, grid: Vec<Vec<Vec<GridLocation>>>, directions: Vec<Direction>, location: Location, face_size :u32) -> u32 {
-    let mut my_location = location;
+fn try_move( cur_location: &Location, delta: &(i32,i32), face_size: usize, orientation: &Vec<Vec<GridOrientation>>) -> Location {
+    
+    // todo 
+    let mut next_direction: GridOrientation;
+    let mut next_side: u8;
+    let mut next_x: usize;
+    let mut next_y: usize;
+    let mut next_dir: Facing;
 
+    // off the left
+    if delta.0 == -1 && cur_location.x == 0 {
+        next_direction = orientation[cur_location.grid as usize][1];
+
+        todo!();
+    }
+    // off the right
+    else if delta.0 == 1 && cur_location.x == face_size{
+        next_direction = orientation[cur_location.grid as usize][2];
+        todo!();
+    }
+    // off the top
+    else if delta.1 == -1 && cur_location.y == 0 {
+        next_direction = orientation[cur_location.grid as usize][0];
+        todo!();
+    }
+    // off the bottom
+    else if delta.1 == 1 && cur_location.y == face_size {
+        next_direction = orientation[cur_location.grid as usize][3];
+        todo!();
+    } else { // internal to a face
+        next_x = (cur_location.x as i32 + delta.0) as usize;
+        next_y = (cur_location.y as i32 + delta.1) as usize;
+    }
+    let new_location = Location{x: next_x, y: next_y, grid: next_side, facing: next_dir};
+    new_location
+}
+
+fn perform_walk(orientation: &Vec<Vec<GridOrientation>>, grid: &Vec<Vec<Vec<GridLocation>>>, directions: &Vec<Direction>, location: &Location, face_size :usize) -> u32 {
+    let mut my_location = location.clone();
 
     for d in directions {
         match d {
-            Forward(_) => {
+            Forward(count) => {
                 let delta:(i32,i32) = match my_location.facing {
                     Facing::Top => (0,-1),
                     Facing::Bottom => (0,1),
@@ -257,25 +302,17 @@ fn perform_walk(order: Vec<Vec<Option<GridOrientation>>>, grid: Vec<Vec<Vec<Grid
                     Facing::Right => (1,0),
                 };
 
-                // off the left
-                if delta.0 == -1 && my_location.x == 0 {
-                    todo!();
+                for _ in 0..*count {
+                    let next_location:Location = try_move(&my_location, &delta, face_size, orientation);
+
+                    if (grid[next_location.grid as usize][next_location.x][next_location.y].val == GridVal::Space) {
+                        my_location = next_location;
+                    } else {
+                        // collision
+                        break;
+                    }
                 }
-                // off the right
-                else if delta.0 == 1 && my_location.x == face_size as usize {
-                    todo!();
-                }
-                // off the top
-                else if delta.1 == -1 && my_location.y == 0 {
-                    todo!();
-                }
-                // off the bottom
-                else if delta.1 == 1 && my_location.y == face_size as usize {
-                    todo!();
-                } else { // internal to a face
-                    my_location.x = (my_location.x as i32 + delta.0) as usize;
-                    my_location.y = (my_location.y as i32 + delta.1) as usize;
-                }
+
             },
             _ => my_location.turn(d),
         }
@@ -289,20 +326,21 @@ fn perform_walk(order: Vec<Vec<Option<GridOrientation>>>, grid: Vec<Vec<Vec<Grid
 }
 fn main() {
     let input : Input = if IS_SAMPLE {
-        Input{ Grid: include_str!("../sample-grid.txt"),
-        Dir: include_str!("../sample-directions.txt"),
-        Order:include_str!("../sample-order.txt"),
-        Size: 4}
+        Input{  grid: include_str!("../sample-grid.txt"),
+                dir: include_str!("../sample-directions.txt"),
+                order:include_str!("../sample-order.txt"),
+                size: 4}
     } else {
-        Input{ Grid: include_str!("../day22-grid.txt"),
-        Dir: include_str!("../day22-directions.txt"),
-        Order: include_str!("../day22-order.txt"),
-        Size: 50}
+        Input{  grid: include_str!("../day22-grid.txt"),
+                dir: include_str!("../day22-directions.txt"),
+                order: include_str!("../day22-order.txt"),
+                size: 50}
     };
 
-    let order = parse_order(input.Order, Phase::One);
-    let grid = parse_grid(input.Grid, &order, input.Size);
-    let directions = parse_directions(input.Dir);
+    let input_sections = parse_order(input.order);
+    let grid_orientation = grid_order();
+    let grid = parse_grid(input.grid, &input_sections, input.size);
+    let directions = parse_directions(input.dir);
 
     let start_location = if IS_SAMPLE {
         Location{x:8,y:0,grid:0,facing:Facing::Right}
@@ -310,7 +348,7 @@ fn main() {
         Location{x:50,y:0,grid:1,facing:Facing::Right}
     };
 
-    let end_location_score = perform_walk(order, grid, directions, start_location, input.Size);
+    let end_location_score = perform_walk(&grid_orientation, &grid, &directions, &start_location, input.size);
     println!("score: {end_location_score}");
 
 }
