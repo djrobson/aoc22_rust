@@ -1,4 +1,4 @@
-const IS_SAMPLE: bool = false;
+const IS_SAMPLE: bool = true;
 const PHASE: u8 = 1;
 
 struct Input {
@@ -22,9 +22,9 @@ enum GridVal {
 }
 #[derive(Clone)]
 struct GridLocation{
-    Val: GridVal,
-    OrigRow: u32,
-    OrigCol: u32,
+    val: GridVal,
+    orig_row: u32,
+    orig_cal: u32,
 }
 enum GridOrientation {
     Top(usize),
@@ -69,10 +69,11 @@ fn GridOrder(_order: &str, phase: Phase) -> Vec<Vec<GridOrientation>>
     result
 }
 
-fn parse_grid(input: &str, _order: Vec<Vec<Option<GridOrientation>>>, _size: u32) -> Vec<Vec<GridLocation>> {
+fn parse_grid(input: &str, order: &Vec<Vec<Option<GridOrientation>>>, size: u32) -> Vec<Vec<Vec<GridLocation>>> {
 
     // parse the grid in it's original shape
-    let mut big_grid: Vec<Vec<GridLocation>> = Vec::new();
+    let mut big_grid: Vec<Vec<Vec<GridLocation>>> = Vec::new();
+    big_grid.insert(0, Vec::new());
     let mut row = 0;
     for line in input.split('\n') {
         let chars = line
@@ -86,20 +87,26 @@ fn parse_grid(input: &str, _order: Vec<Vec<Option<GridOrientation>>>, _size: u32
                     b'#' => GridVal::Rock,
                     _ => panic!("found bad grid val")
                 };
-                GridLocation{Val: val, OrigRow: row, OrigCol: idx as u32, }
+                GridLocation{val, orig_row: row, orig_cal: idx as u32, }
             }
         ).collect();
 
-        big_grid.push(chars);
+        big_grid[0].push(chars);
         row += 1;
     }
 
-    /*// break the grid into panels
-    let mut sides: Vec<Vec<Vec<GridLocation>>> = Vec::new();
-    for side in 1..=6 {
-
+    // break the grid into panels
+    for row in 0..order.len() {
+        for g in 0..order[row].len() {
+            match order[row][g] {
+                Some(Top(side)) => todo!(),
+                Some(Left(side)) => todo!(),
+                Some(Right(side)) => todo!(),
+                Some(Bottom(side)) => todo!(),
+                None => (),
+            };
+        }
     }
-    sides*/
     big_grid
 }
 
@@ -144,7 +151,7 @@ fn parse_directions(input: &str) -> Vec<Direction> {
             b'0'..=b'9' => {
                 let mut count = char as usize - b'0' as usize;
                 loop {
-                    if cursor == length {
+                    if cursor == length -1 {
                         break;
                     }
                     let next = dir_bytes[cursor+1];
@@ -203,22 +210,81 @@ impl Location {
             _ => panic!("unexpected turn"),
         }
     }
+    fn forward_around_edge(&mut self, face: Facing) {
+        match (self.grid, self.facing) {
+            (0,_) => {},
+            (1,Facing::Top) => todo!(),
+            (1,Facing::Left) => todo!(),
+            (1,Facing::Right) => todo!(),
+            (1,Facing::Bottom) => todo!(),
+            (2,Facing::Top) => todo!(),
+            (2,Facing::Left) => todo!(),
+            (2,Facing::Right) => todo!(),
+            (2,Facing::Bottom) => todo!(),
+            (3,Facing::Top) => todo!(),
+            (3,Facing::Left) => todo!(),
+            (3,Facing::Right) => todo!(),
+            (3,Facing::Bottom) => todo!(),
+            (4,Facing::Top) => todo!(),
+            (4,Facing::Left) => todo!(),
+            (4,Facing::Right) => todo!(),
+            (4,Facing::Bottom) => todo!(),
+            (5,Facing::Top) => todo!(),
+            (5,Facing::Left) => todo!(),
+            (5,Facing::Right) => todo!(),
+            (5,Facing::Bottom) => todo!(),
+            (6,Facing::Top) => todo!(),
+            (6,Facing::Left) => todo!(),
+            (6,Facing::Right) => todo!(),
+            (6,Facing::Bottom) => todo!(),
+            _ => panic!("Forward across unexpected edge"),
+        }
+
+    }
 }
 
-fn perform_walk(grid: Vec<Vec<GridLocation>>, directions: Vec<Direction>, location: Location) -> u32 {
+fn perform_walk(order: Vec<Vec<Option<GridOrientation>>>, grid: Vec<Vec<Vec<GridLocation>>>, directions: Vec<Direction>, location: Location, face_size :u32) -> u32 {
     let mut my_location = location;
+
 
     for d in directions {
         match d {
             Forward(_) => {
+                let delta:(i32,i32) = match my_location.facing {
+                    Facing::Top => (0,-1),
+                    Facing::Bottom => (0,1),
+                    Facing::Left => (-1,0),
+                    Facing::Right => (1,0),
+                };
 
+                // off the left
+                if delta.0 == -1 && my_location.x == 0 {
+                    todo!();
+                }
+                // off the right
+                else if delta.0 == 1 && my_location.x == face_size as usize {
+                    todo!();
+                }
+                // off the top
+                else if delta.1 == -1 && my_location.y == 0 {
+                    todo!();
+                }
+                // off the bottom
+                else if delta.1 == 1 && my_location.y == face_size as usize {
+                    todo!();
+                } else { // internal to a face
+                    my_location.x = (my_location.x as i32 + delta.0) as usize;
+                    my_location.y = (my_location.y as i32 + delta.1) as usize;
+                }
             },
             _ => my_location.turn(d),
         }
     }
 
-    let final_grid_location = grid[my_location.y][my_location.x].clone();
-    let final_score = final_grid_location.OrigRow * 1000 + final_grid_location.OrigCol * 8 + my_location.score();
+    let final_grid_location = grid[my_location.grid as usize][my_location.y][my_location.x].clone();
+    let final_score = ((final_grid_location.orig_row+1) * 1000) 
+                                + ((final_grid_location.orig_cal+1) * 8) 
+                                + my_location.score();
     final_score
 }
 fn main() {
@@ -235,7 +301,7 @@ fn main() {
     };
 
     let order = parse_order(input.Order, Phase::One);
-    let grid = parse_grid(input.Grid, order, input.Size);
+    let grid = parse_grid(input.Grid, &order, input.Size);
     let directions = parse_directions(input.Dir);
 
     let start_location = if IS_SAMPLE {
@@ -244,6 +310,7 @@ fn main() {
         Location{x:50,y:0,grid:1,facing:Facing::Right}
     };
 
-    let end_location = perform_walk(grid,directions,start_location);
+    let end_location_score = perform_walk(order, grid, directions, start_location, input.Size);
+    println!("score: {end_location_score}");
 
 }
