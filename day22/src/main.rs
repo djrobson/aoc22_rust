@@ -311,12 +311,17 @@ fn try_move(
     delta: &(i32, i32),
     face_size: usize,
     orientation: &Vec<Vec<(Facing, usize)>>,
+    grid: &Vec<Vec<Vec<GridLocation>>>,
 ) -> Location {
+    let orig_loc = grid[cur_location.grid][cur_location.y][cur_location.x];
     let new_location: Location = if delta.0 == -1 && cur_location.x == 0 {
         // off the left
-        println!("Leaving Left side of {} to {:?} of {}", cur_location.grid,
+        println!("Leaving Left side of {} to {:?} of {} ({},{})", cur_location.grid,
             orientation[cur_location.grid as usize][1].0,
-            orientation[cur_location.grid as usize][1].1);
+            orientation[cur_location.grid as usize][1].1,
+            orig_loc.orig_col, 
+            orig_loc.orig_row,
+        );
         rotate_transform(
             Left,
             orientation[cur_location.grid as usize][1],
@@ -326,9 +331,11 @@ fn try_move(
         )
     } else if delta.0 == 1 && cur_location.x == face_size-1 {
         // off the right
-        println!("Leaving Right side of {} to {:?} of {}", cur_location.grid,
+        println!("Leaving Right side of {} to {:?} of {} ({},{})", cur_location.grid,
             orientation[cur_location.grid as usize][2].0,
-            orientation[cur_location.grid as usize][2].1);
+            orientation[cur_location.grid as usize][2].1,
+            orig_loc.orig_col, 
+            orig_loc.orig_row,);
         rotate_transform(
             Right,
             orientation[cur_location.grid as usize][2],
@@ -338,9 +345,11 @@ fn try_move(
         )
     } else if delta.1 == -1 && cur_location.y == 0 {
         // off the top
-        println!("Leaving Top side of {} to {:?} of {}", cur_location.grid,
+        println!("Leaving Top side of {} to {:?} of {} ({},{})", cur_location.grid,
             orientation[cur_location.grid as usize][0].0,
-            orientation[cur_location.grid as usize][0].1);
+            orientation[cur_location.grid as usize][0].1,
+            orig_loc.orig_col, 
+            orig_loc.orig_row,);
         rotate_transform(
             Top,
             orientation[cur_location.grid as usize][0],
@@ -350,9 +359,11 @@ fn try_move(
         )
     } else if delta.1 == 1 && cur_location.y == face_size-1 {
         // off the bottom
-        println!("Leaving Bottom side of {} to {:?} of {}", cur_location.grid,
+        println!("Leaving Bottom side of {} to {:?} of {} ({},{})", cur_location.grid,
             orientation[cur_location.grid as usize][3].0,
-            orientation[cur_location.grid as usize][3].1);
+            orientation[cur_location.grid as usize][3].1,
+            orig_loc.orig_col, 
+            orig_loc.orig_row,);
         rotate_transform(
             Bottom,
             orientation[cur_location.grid as usize][3],
@@ -394,12 +405,14 @@ fn perform_walk(
                     };
                     
                     let next_location: Location =
-                        try_move(&my_location, &delta, face_size, orientation);
+                        try_move(&my_location, &delta, face_size, orientation, grid);
 
                     if grid[next_location.grid as usize][next_location.y][next_location.x].val
                         == GridVal::Space
                     {
-                        println!("{:?}", my_location);
+                        println!("{:?} ({},{})", my_location, 
+                            grid[my_location.grid][my_location.y][my_location.x].orig_col,
+                            grid[my_location.grid][my_location.y][my_location.x].orig_row,);
                         my_location = next_location;
                     } else {
                         println!("{:?} bump", my_location);
