@@ -1,6 +1,6 @@
 use std::fmt;
 
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 const PHASE: u8 = 2;
 
 struct Input {
@@ -16,11 +16,25 @@ enum GridVal {
     Rock,
     Void,
 }
+impl fmt::Debug for GridVal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GridVal::Space => write!(f, "."),
+            GridVal::Rock => write!(f, "#"),
+            GridVal::Void => write!(f, " "),
+        }
+    }
+}
 #[derive(Clone, Copy)]
 struct GridLocation {
     val: GridVal,
     orig_row: u32,
     orig_col: u32,
+}
+impl fmt::Debug for GridLocation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({},{}) {:?}", self.orig_col, self.orig_row, self.val)
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -121,6 +135,7 @@ fn parse_grid(
                     // 01 11 21 31
                     // 02 12 22 32
                     // 03 13 23 33
+                    println!("no change for {side}, already top");
                     for input_row in row_start..(row_start + size as usize) {
                         big_grid[side].insert(face_row, Vec::new());
                         for input_col in col_start..(col_start + size as usize) {
@@ -135,6 +150,7 @@ fn parse_grid(
                     // 13 12 11 10
                     // 23 22 21 20
                     // 33 32 31 30
+                    println!("rotating {side} ccw 90o from left up to left left");
                     for input_col in (col_start..col_start + size as usize).rev() {
                         big_grid[side].insert(face_row, Vec::new());
                         for input_row in row_start..(row_start + size as usize) {
@@ -149,9 +165,10 @@ fn parse_grid(
                     // 20 21 22 23
                     // 10 11 12 13
                     // 00 01 02 03 
-                    for input_row in (row_start..row_start + size as usize).rev() {
+                    println!("rotating {side} cw 90o from right up to right right");
+                    for input_col in col_start..(col_start + size as usize) {
                         big_grid[side].insert(face_row, Vec::new());
-                        for input_col in col_start..(col_start + size as usize) {
+                        for input_row in (row_start..row_start + size as usize).rev() {
                             let grid_val = big_grid[0][input_row][input_col].clone();
                             big_grid[side][face_row].push(grid_val);
                         }
@@ -163,6 +180,7 @@ fn parse_grid(
                     // 32 22 12 02
                     // 31 21 11 01
                     // 30 30 10 00
+                    println!("rotating {side} 180o from bottom up to bottom bottom");
                     for input_row in (row_start..(row_start + size as usize)).rev() {
                         big_grid[side].insert(face_row, Vec::new());
                         for input_col in (col_start..(col_start + size as usize)).rev() {
@@ -286,23 +304,24 @@ fn rotate_transform(
     old_y: usize,
     face_size: usize,
 ) -> Location {
+    let last = face_size -1;
     match (leaving_side,arriving_side.0) {
         (Bottom, Top) => Location{x:old_x, y: 0, grid: arriving_side.1, facing: Bottom},
-        (Bottom, Left) => Location{x:0, y:(face_size -1 - old_x), grid: arriving_side.1, facing: Right},
+        (Bottom, Left) => Location{x:0, y:last - old_x, grid: arriving_side.1, facing: Right},
         (Bottom, Right) => Location{x:face_size -1, y:old_x, grid: arriving_side.1, facing: Left},
-        (Bottom, Bottom) => Location{x:(face_size -1 - old_x), y: face_size-1, grid: arriving_side.1, facing: Top},
-        (Top, Top) => Location{x:(face_size -1 - old_x), y:0, grid: arriving_side.1, facing: Bottom},
+        (Bottom, Bottom) => Location{x:last - old_x, y: face_size-1, grid: arriving_side.1, facing: Top},
+        (Top, Top) => Location{x:last - old_x, y:0, grid: arriving_side.1, facing: Bottom},
         (Top, Left) => Location{x:0, y:old_x, grid: arriving_side.1, facing: Right},
-        (Top, Right) => Location{x:face_size -1, y:(face_size -1 - old_x), grid: arriving_side.1, facing: Left},
-        (Top, Bottom) => Location{x:old_x, y:face_size-1, grid: arriving_side.1, facing: Top},
+        (Top, Right) => Location{x:last, y:last - old_x, grid: arriving_side.1, facing: Left},
+        (Top, Bottom) => Location{x:old_x, y:last, grid: arriving_side.1, facing: Top},
         (Left, Top) => Location{x:old_y, y:0, grid: arriving_side.1, facing: Bottom},
-        (Left, Left) => Location{x:0, y:(face_size -1 - old_y), grid: arriving_side.1, facing: Right},
-        (Left, Right) => Location{x:face_size-1, y:old_y, grid: arriving_side.1, facing: Left},
-        (Left, Bottom) => Location{x:old_y, y:face_size -1, grid: arriving_side.1, facing: Top},
-        (Right, Top) => Location{x:(face_size -1 - old_y), y:0, grid: arriving_side.1, facing: Bottom},
+        (Left, Left) => Location{x:0, y:last - old_y, grid: arriving_side.1, facing: Right},
+        (Left, Right) => Location{x:last, y:old_y, grid: arriving_side.1, facing: Left},
+        (Left, Bottom) => Location{x:old_y, y:last, grid: arriving_side.1, facing: Top},
+        (Right, Top) => Location{x:last - old_y, y:0, grid: arriving_side.1, facing: Bottom},
         (Right, Left) => Location{x:0, y:old_y, grid: arriving_side.1, facing: Right},
-        (Right, Right) => Location{x:face_size -1, y:(face_size -1 - old_y), grid: arriving_side.1, facing: Left},
-        (Right, Bottom) => Location{x:old_y, y:face_size -1, grid: arriving_side.1, facing: Top},
+        (Right, Right) => Location{x:last, y:last - old_y, grid: arriving_side.1, facing: Left},
+        (Right, Bottom) => Location{x:old_y, y:last, grid: arriving_side.1, facing: Top},
     }
 }
 
@@ -380,6 +399,11 @@ fn try_move(
             facing: cur_location.facing,
         }
     };
+    if cur_location.grid != new_location.grid {
+        println!("Arriving {:?} ({},{})", new_location, 
+            grid[new_location.grid][new_location.y][new_location.x].orig_col,
+            grid[new_location.grid][new_location.y][new_location.x].orig_row,);
+    }
     new_location
 }
 
@@ -391,6 +415,9 @@ fn perform_walk(
     face_size: usize,
 ) -> u32 {
     let mut my_location = location.clone();
+    println!("starting to walk {:?} ({},{})", my_location, 
+        grid[my_location.grid][my_location.y][my_location.x].orig_col,
+        grid[my_location.grid][my_location.y][my_location.x].orig_row,);
 
     for d in directions {
         match d {
@@ -410,12 +437,14 @@ fn perform_walk(
                     if grid[next_location.grid as usize][next_location.y][next_location.x].val
                         == GridVal::Space
                     {
+                        my_location = next_location;
                         println!("{:?} ({},{})", my_location, 
                             grid[my_location.grid][my_location.y][my_location.x].orig_col,
                             grid[my_location.grid][my_location.y][my_location.x].orig_row,);
-                        my_location = next_location;
                     } else {
-                        println!("{:?} bump", my_location);
+                        println!("{:?} ({},{}) bump", my_location, 
+                            grid[my_location.grid][my_location.y][my_location.x].orig_col,
+                            grid[my_location.grid][my_location.y][my_location.x].orig_row,);
                         // collision
                         break;
                     }
@@ -429,7 +458,20 @@ fn perform_walk(
     let final_score = ((final_grid_location.orig_row + 1) * 1000)
         + ((final_grid_location.orig_col + 1) * 4)
         + my_location.score();
+    println!("finished on grid {} facing {:?}", my_location.grid, my_location.facing);
     final_score
+}
+
+fn print_grid(grid: &Vec<Vec<Vec<GridLocation>>>) {
+    for g in 0..grid.len() {
+        println!("Grid #{g}");
+        for r in &grid[g] {
+            for c in r {
+                print!("{:?}",c);
+            }
+            println!("");
+        }
+    }
 }
 fn main() {
     let input: Input = if IS_SAMPLE {
@@ -452,6 +494,8 @@ fn main() {
     let grid_orientation = grid_order();
     let grid = parse_grid(input.grid, &input_sections, input.size);
     let directions = parse_directions(input.dir);
+
+    print_grid(&grid);
 
     let start_location =
         Location {
