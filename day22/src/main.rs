@@ -1,7 +1,7 @@
 use std::fmt;
 
-const IS_SAMPLE: bool = false;
-const PHASE: u8 = 1;
+const IS_SAMPLE: bool = true;
+const PHASE: u8 = 2;
 
 struct Input {
     grid: &'static str,
@@ -117,6 +117,10 @@ fn parse_grid(
             let mut face_row = 0;
             match order[row][g] {
                 Some((Top, side)) => {
+                    // 00 10 20 30
+                    // 01 11 21 31
+                    // 02 12 22 32
+                    // 03 13 23 33
                     for input_row in row_start..(row_start + size as usize) {
                         big_grid[side].insert(face_row, Vec::new());
                         for input_col in col_start..(col_start + size as usize) {
@@ -126,9 +130,48 @@ fn parse_grid(
                         face_row += 1;
                     }
                 }
-                Some((Left, side)) => todo!(),
-                Some((Right, side)) => todo!(),
-                Some((Bottom, side)) => todo!(),
+                Some((Left, side)) => {
+                    // 03 02 01 00
+                    // 13 12 11 10
+                    // 23 22 21 20
+                    // 33 32 31 30
+                    for input_col in (col_start..col_start + size as usize).rev() {
+                        big_grid[side].insert(face_row, Vec::new());
+                        for input_row in row_start..(row_start + size as usize) {
+                            let grid_val = big_grid[0][input_row][input_col].clone();
+                            big_grid[side][face_row].push(grid_val);
+                        }
+                        face_row +=1;
+                    }
+                }
+                Some((Right, side)) => {
+                    // 30 31 32 33
+                    // 20 21 22 23
+                    // 10 11 12 13
+                    // 00 01 02 03 
+                    for input_row in (row_start..row_start + size as usize).rev() {
+                        big_grid[side].insert(face_row, Vec::new());
+                        for input_col in col_start..(col_start + size as usize) {
+                            let grid_val = big_grid[0][input_row][input_col].clone();
+                            big_grid[side][face_row].push(grid_val);
+                        }
+                        face_row +=1;
+                    }
+                },
+                Some((Bottom, side)) => {
+                    // 33 23 13 03
+                    // 32 22 12 02
+                    // 31 21 11 01
+                    // 30 30 10 00
+                    for input_row in (row_start..(row_start + size as usize)).rev() {
+                        big_grid[side].insert(face_row, Vec::new());
+                        for input_col in (col_start..(col_start + size as usize)).rev() {
+                            let grid_val = big_grid[0][input_row][input_col].clone();
+                            big_grid[side][face_row].push(grid_val);
+                        }
+                        face_row += 1;
+                    }
+                },
                 None => (),
             };
         }
@@ -207,6 +250,11 @@ struct Location {
     facing: Facing,
 }
 
+impl fmt::Debug for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"({}, {}): {} {:?}", self.x, self.y, self.grid, self.facing)
+    }
+}
 impl Location {
     fn score(&self) -> u32 {
         match self.facing {
@@ -240,22 +288,21 @@ fn rotate_transform(
 ) -> Location {
     match (leaving_side,arriving_side.0) {
         (Bottom, Top) => Location{x:old_x, y: 0, grid: arriving_side.1, facing: Bottom},
-        (Left, Right) => Location{x:face_size-1, y:old_y, grid: arriving_side.1, facing: Left},
-        (Right, Left) => Location{x:0, y:old_y, grid: arriving_side.1, facing: Right},
+        (Bottom, Left) => Location{x:0, y:(face_size -1 - old_x), grid: arriving_side.1, facing: Right},
+        (Bottom, Right) => Location{x:face_size -1, y:old_x, grid: arriving_side.1, facing: Left},
+        (Bottom, Bottom) => Location{x:(face_size -1 - old_x), y: face_size-1, grid: arriving_side.1, facing: Top},
+        (Top, Top) => Location{x:(face_size -1 - old_x), y:0, grid: arriving_side.1, facing: Bottom},
+        (Top, Left) => Location{x:0, y:old_x, grid: arriving_side.1, facing: Right},
+        (Top, Right) => Location{x:face_size -1, y:(face_size -1 - old_x), grid: arriving_side.1, facing: Left},
         (Top, Bottom) => Location{x:old_x, y:face_size-1, grid: arriving_side.1, facing: Top},
-        (Top, Top) => todo!(),
-        (Top, Left) => todo!(),
-        (Top, Right) => todo!(),
-        (Left, Top) => todo!(),
-        (Left, Left) => todo!(),
-        (Left, Bottom) => todo!(),
-        (Right, Top) => todo!(),
-        (Right, Right) => todo!(),
-        (Right, Bottom) => todo!(),
-        (Bottom, Left) => todo!(),
-        (Bottom, Right) => todo!(),
-        (Bottom, Bottom) => todo!(),
-        
+        (Left, Top) => Location{x:old_y, y:0, grid: arriving_side.1, facing: Bottom},
+        (Left, Left) => Location{x:0, y:(face_size -1 - old_y), grid: arriving_side.1, facing: Right},
+        (Left, Right) => Location{x:face_size-1, y:old_y, grid: arriving_side.1, facing: Left},
+        (Left, Bottom) => Location{x:old_y, y:face_size -1, grid: arriving_side.1, facing: Top},
+        (Right, Top) => Location{x:(face_size -1 - old_y), y:0, grid: arriving_side.1, facing: Bottom},
+        (Right, Left) => Location{x:0, y:old_y, grid: arriving_side.1, facing: Right},
+        (Right, Right) => Location{x:face_size -1, y:(face_size -1 - old_y), grid: arriving_side.1, facing: Left},
+        (Right, Bottom) => Location{x:old_y, y:face_size -1, grid: arriving_side.1, facing: Top},
     }
 }
 
@@ -267,6 +314,9 @@ fn try_move(
 ) -> Location {
     let new_location: Location = if delta.0 == -1 && cur_location.x == 0 {
         // off the left
+        println!("Leaving Left side of {} to {:?} of {}", cur_location.grid,
+            orientation[cur_location.grid as usize][1].0,
+            orientation[cur_location.grid as usize][1].1);
         rotate_transform(
             Left,
             orientation[cur_location.grid as usize][1],
@@ -276,6 +326,9 @@ fn try_move(
         )
     } else if delta.0 == 1 && cur_location.x == face_size-1 {
         // off the right
+        println!("Leaving Right side of {} to {:?} of {}", cur_location.grid,
+            orientation[cur_location.grid as usize][2].0,
+            orientation[cur_location.grid as usize][2].1);
         rotate_transform(
             Right,
             orientation[cur_location.grid as usize][2],
@@ -285,6 +338,9 @@ fn try_move(
         )
     } else if delta.1 == -1 && cur_location.y == 0 {
         // off the top
+        println!("Leaving Top side of {} to {:?} of {}", cur_location.grid,
+            orientation[cur_location.grid as usize][0].0,
+            orientation[cur_location.grid as usize][0].1);
         rotate_transform(
             Top,
             orientation[cur_location.grid as usize][0],
@@ -294,6 +350,9 @@ fn try_move(
         )
     } else if delta.1 == 1 && cur_location.y == face_size-1 {
         // off the bottom
+        println!("Leaving Bottom side of {} to {:?} of {}", cur_location.grid,
+            orientation[cur_location.grid as usize][3].0,
+            orientation[cur_location.grid as usize][3].1);
         rotate_transform(
             Bottom,
             orientation[cur_location.grid as usize][3],
@@ -325,24 +384,25 @@ fn perform_walk(
     for d in directions {
         match d {
             Forward(count) => {
-                let delta: (i32, i32) = match my_location.facing {
-                    Facing::Top => (0, -1),
-                    Facing::Bottom => (0, 1),
-                    Facing::Left => (-1, 0),
-                    Facing::Right => (1, 0),
-                };
 
                 for _walk_cnt in 0..*count {
+                    let delta: (i32, i32) = match my_location.facing {
+                        Facing::Top => (0, -1),
+                        Facing::Bottom => (0, 1),
+                        Facing::Left => (-1, 0),
+                        Facing::Right => (1, 0),
+                    };
+                    
                     let next_location: Location =
                         try_move(&my_location, &delta, face_size, orientation);
 
                     if grid[next_location.grid as usize][next_location.y][next_location.x].val
                         == GridVal::Space
                     {
-                        //println!("{:?}", my_location.facing);
+                        println!("{:?}", my_location);
                         my_location = next_location;
                     } else {
-                        //println!("bump");
+                        println!("{:?} bump", my_location);
                         // collision
                         break;
                     }
