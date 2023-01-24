@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 const ROUNDS: usize = 10;
 
 fn parse_input(input: &str) -> Vec<Vec<u8>> {
@@ -11,7 +11,7 @@ fn parse_input(input: &str) -> Vec<Vec<u8>> {
     grid
 }
 fn find_elves_in_grid(grid: &Vec<Vec<u8>>, offset: i32) -> HashSet<(i32, i32)> {
-    let mut elves: HashSet<(i32, i32)> = grid
+    let elves: HashSet<(i32, i32)> = grid
         .iter()
         .enumerate()
         .flat_map(|row| {
@@ -20,10 +20,9 @@ fn find_elves_in_grid(grid: &Vec<Vec<u8>>, offset: i32) -> HashSet<(i32, i32)> {
                 .iter()
                 .enumerate()
                 .filter(|col| *col.1 == b'#')
-                .map(move |col| (my_row, col.0 as i32 + offset))
+                .map(move |col| (col.0 as i32 + offset, my_row))
         })
         .collect::<HashSet<(i32, i32)>>();
-
     elves
 }
 
@@ -43,6 +42,30 @@ fn has_neighbors(elf: &(i32, i32), elves: &HashSet<(i32, i32)>) -> bool {
         .map(|c| (elf.0 + c.0, elf.1 + c.1))
         .any(|c| elves.contains(&c))
 }
+fn print_grid(elves: &HashSet<(i32,i32)>) {
+    let mut min_x = i32::MAX;
+    let mut min_y = i32::MAX;
+    let mut max_x = i32::MIN;
+    let mut max_y = i32::MIN;
+    for elf in elves {
+        min_x = min_x.min(elf.0);
+        max_x = max_x.max(elf.0);
+        min_y = min_y.min(elf.1);
+        max_y = max_y.max(elf.1);
+    }
+    
+    for y in min_y..=max_y {
+        for x in min_x..=max_x {
+            if elves.contains(&(x,y)) {
+                print!("#");
+            }else{
+                print!(".")
+            }
+        }
+        println!("");
+    }
+
+}
 fn main() {
     const INPUT: &str = if IS_SAMPLE {
         include_str!("../sample.txt")
@@ -51,23 +74,29 @@ fn main() {
     };
 
     let moves = [
-        [(-1, -1), (0, -1), (1, -1)],  //N
-        [(-1, 1), (0, 1), (1, 1)],     // S
-        [(-1, -1), (-1, 0), (-1, -1)], // W
-        [(1, -1), (1, 0), (1, -1)],
-    ]; // E
+        [(-1, -1), ( 0, -1), ( 1, -1)], // N
+        [(-1,  1), ( 0,  1), ( 1,  1)], // S
+        [(-1, -1), (-1,  0), (-1,  1)], // W
+        [( 1, -1), ( 1,  0), ( 1,  1)], // E
+    ];
 
-    let mut grid = parse_input(INPUT);
-    let mut elves = find_elves_in_grid(&grid, ROUNDS as i32);
+    let grid = parse_input(INPUT);
+    let mut elves = find_elves_in_grid(&grid, 0);
+    let mut tried_to_move: bool;
 
     for step in 0..ROUNDS {
+        tried_to_move = false;
+        println!("start of round {step}");
+        print_grid(&elves);
         let mut planned_moves: HashMap<(i32, i32), Vec<&(i32, i32)>> = HashMap::new();
         for elf in &elves {
             // check adjascent
             if !has_neighbors(elf, &elves) {
                 planned_moves.insert(elf.clone(), vec![elf]);
             } else {
+                tried_to_move = true;
                 // check dirs
+                let mut did_move = false;
                 for offset in 0..4 {
                     if !moves[(step + offset) % 4]
                         .iter()
@@ -86,10 +115,17 @@ fn main() {
                                 list.push(elf);
                             }
                         };
+                        did_move = true;
                         break;
                     }
                 }
+                if !did_move {
+                    planned_moves.insert(*elf, vec![elf]);
+                }
             }
+        }
+        if !tried_to_move {
+            break;
         }
         // check for collisions
         let mut new_elves = HashSet::new();
@@ -115,6 +151,8 @@ fn main() {
         min_y = min_y.min(elf.1);
         max_y = max_y.max(elf.1);
     }
-    let total_squares = (max_x - min_x) * (max_y - min_y);
+    println!("final grid state");
+    print_grid(&elves);
+    let total_squares = (max_x +1 - min_x) * (max_y+1 - min_y);
     println!("empty squares {}", total_squares as usize - elves.len());
 }
