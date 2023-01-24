@@ -84,10 +84,10 @@ fn main() {
     let mut elves = find_elves_in_grid(&grid, 0);
     let mut tried_to_move: bool;
 
-    for step in 0..ROUNDS {
+    for step in 0..1000 {
         tried_to_move = false;
-        println!("start of round {step}");
-        print_grid(&elves);
+        //println!("start of round {step}");
+        //print_grid(&elves);
         let mut planned_moves: HashMap<(i32, i32), Vec<&(i32, i32)>> = HashMap::new();
         for elf in &elves {
             // check adjascent
@@ -125,6 +125,7 @@ fn main() {
             }
         }
         if !tried_to_move {
+            println!("all done at step {}", step+1);
             break;
         }
         // check for collisions
@@ -140,6 +141,7 @@ fn main() {
         }
         elves = new_elves;
     }
+    println!("done processing elves");
 
     let mut min_x = i32::MAX;
     let mut min_y = i32::MAX;
