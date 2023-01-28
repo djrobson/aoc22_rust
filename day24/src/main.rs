@@ -1,7 +1,8 @@
 #![feature(is_some_and)]
 use std::collections::VecDeque;
+use rayon::prelude::*;
 
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 
 struct Grid {
     grid_at_time: Vec<Vec<Vec<Vec<u8>>>>,
@@ -15,7 +16,11 @@ impl Grid {
         let max_x = first[0].len();
         let max_y = first.len();
         grid_at_time.insert(0, first);
-        Self {grid_at_time, max_x, max_y }
+        Self {
+            grid_at_time,
+            max_x,
+            max_y,
+        }
     }
     pub fn possible_move(&mut self, pos: (usize, usize), time: usize) -> bool {
         let gt = self.at_time(time);
@@ -23,21 +28,44 @@ impl Grid {
     }
 
     fn at_time(&mut self, time: usize) -> &Vec<Vec<Vec<u8>>> {
-        while self.grid_at_time.len() < time {
+        let cycle_time = (self.max_x -2) * (self.max_y-2);
+        if time >= cycle_time {
+            return &self.grid_at_time[(time - cycle_time)%time];
+        }
+        while self.grid_at_time.len() <= time {
             dbg!(self.grid_at_time.len());
-            self.grid_at_time.push(self.calc_next_tick(self.grid_at_time.len()+1));
+            self.grid_at_time.insert(
+                self.grid_at_time.len(),
+                self.calc_next_tick(self.grid_at_time.len()),
+            );
         }
         &self.grid_at_time[time]
     }
 
-    fn get_dest_pos(&self) -> (usize,usize) {
-        (self.max_x -1, self.max_y)
+    fn get_dest_pos(&self) -> (usize, usize) {
+        (self.max_x - 2, self.max_y -1)
+    }
+
+    fn print_grid(grid: &Vec<Vec<Vec<u8>>>) {
+        for r in 0..grid.len() {
+            for c in 0..grid[0].len() {
+                let v = &grid[r][c];
+                if v.len() == 0 {
+                    print!(".");
+                } else if v.len() > 1 {
+                    print!("{:1}", v.len());
+                } else {
+                    print!("{}", v[0] as char);
+                }
+            }
+            println!("");
+        }
     }
 
     fn calc_next_tick(&self, tick: usize) -> Vec<Vec<Vec<u8>>> {
         let mut next_grid: Vec<Vec<Vec<u8>>> = Vec::new();
-        
-        let this_grid = &self.grid_at_time[tick-1];
+
+        let this_grid = &self.grid_at_time[tick - 1];
 
         for row in 0..self.max_y {
             next_grid.insert(row, Vec::new());
@@ -51,40 +79,41 @@ impl Grid {
                 for blizz in &this_grid[row][col] {
                     match blizz {
                         b'<' => {
-                            if this_grid[row][col-1].get(0).is_some_and(|v| *v == b'#') {
-                                next_grid[row][self.max_x -1].push(*blizz);
+                            if this_grid[row][col - 1].get(0).is_some_and(|v| *v == b'#') {
+                                next_grid[row][self.max_x - 2].push(*blizz);
                             } else {
-                                next_grid[row][col-1].push(*blizz);
+                                next_grid[row][col - 1].push(*blizz);
                             }
-                        },
+                        }
                         b'^' => {
-                            if this_grid[row-1][col].get(0).is_some_and(|v| *v == b'#') {
-                                next_grid[self.max_y-1][col].push(*blizz);
+                            if this_grid[row - 1][col].get(0).is_some_and(|v| *v == b'#') {
+                                next_grid[self.max_y - 2][col].push(*blizz);
                             } else {
-                                next_grid[row-1][col].push(*blizz);
+                                next_grid[row - 1][col].push(*blizz);
                             }
-                        },
+                        }
                         b'>' => {
-                            if this_grid[row][col+1].get(0).is_some_and(|v| *v == b'#') {
+                            if this_grid[row][col + 1].get(0).is_some_and(|v| *v == b'#') {
                                 next_grid[row][1].push(*blizz);
                             } else {
-                                next_grid[row][col+1].push(*blizz);
+                                next_grid[row][col + 1].push(*blizz);
                             }
-                        },
+                        }
                         b'v' => {
-                            if this_grid[row+1][col].get(0).is_some_and(|v| *v == b'#') {
+                            if this_grid[row + 1][col].get(0).is_some_and(|v| *v == b'#') {
                                 next_grid[1][col].push(*blizz);
                             } else {
-                                next_grid[row+1][col].push(*blizz);
+                                next_grid[row + 1][col].push(*blizz);
                             }
-                        },
-                        b'#' => {next_grid[row][col].push(*blizz)},
+                        }
+                        b'#' => next_grid[row][col].push(*blizz),
+                        b'.' => (),
                         _ => panic!("unexpected grid val"),
                     }
-                    
                 }
             }
         }
+        //Grid::print_grid(&next_grid);
         next_grid
     }
 }
@@ -103,31 +132,34 @@ fn main() {
     } else {
         include_str!("../input24.txt")
     };
-    let mut grid_at_time =  Grid::new(parse_grid(INPUT));
+    let mut grid_at_time = Grid::new(parse_grid(INPUT));
+    //println!("initial grid");
+    //rid::print_grid(&grid_at_time.at_time(0));
 
-    let my_pos: (usize, usize) = (0,1);
+    let my_pos: (usize, usize) = (1, 0);
     let end_pos = grid_at_time.get_dest_pos();
-    let possible_moves:[(isize,isize);5] = [(1,0),(0,1),(0,0),(-1,0),(0,-1)];
+    let possible_moves: [(isize, isize); 5] = [(1, 0), (0, 1), (0, 0), (-1, 0), (0, -1)];
 
     let mut moves: VecDeque<((usize, usize), usize)> = VecDeque::new();
 
     moves.push_back((my_pos, 0));
-    while moves.len() > 0  {
+    while moves.len() > 0 {
         let m = moves.pop_front().unwrap();
+        //dbg!(m);
         if m.0 == end_pos {
             println!("{}", m.1);
             break;
         }
-        for rm in possible_moves.iter().filter(|pm| {
-            let pmx = m.0.0 as isize + pm.0;
-            let pmy = m.0.1 as isize + pm.1;
-            if pmy >= 0 && pmx >=0 {
-                grid_at_time.possible_move((pmx as usize,pmy as usize), m.1)
-            } else {
-                false
+        for rm in possible_moves.iter() {
+            let pmx = m.0.0 as isize + rm.0;
+            let pmy = m.0.1 as isize + rm.1;
+            //println!("trying ({},{}) to ({},{}) on tick {}", m.0.0, m.0.1, pmx, pmy, m.1);
+            if pmy >= 0 && pmx >= 0 {
+                let next_move = (pmx as usize, pmy as usize);
+                if grid_at_time.possible_move(next_move, m.1 + 1) {
+                    moves.push_back((next_move, m.1 +1));
+                }
             }
-        }){
-            moves.push_back(((rm.0 as usize, rm.1 as usize),m.1));
         }
     }
     if moves.len() == 0 {
