@@ -2,7 +2,7 @@
 use std::collections::{VecDeque,HashMap};
 //use rayon::prelude::*;
 
-const IS_SAMPLE: bool = false;
+const IS_SAMPLE: bool = true;
 
 struct Grid {
     grid_at_time: Vec<Vec<Vec<Vec<u8>>>>,
@@ -33,7 +33,6 @@ impl Grid {
         } else {
             false
         }
-
         //gt[pos.1][pos.0].len() == 0
     }
 
@@ -132,7 +131,6 @@ impl Grid {
                 }
             }
         }
-        //Grid::print_grid(&next_grid);
         next_grid
     }
 }
@@ -145,29 +143,23 @@ fn parse_grid(input: &str) -> Vec<Vec<Vec<u8>>> {
     result
 }
 
-fn main() {
-    const INPUT: &str = if IS_SAMPLE {
-        include_str!("../sample.txt")
-    } else {
-        include_str!("../input24.txt")
-    };
-    let mut grid_at_time = Grid::new(parse_grid(INPUT));
-    //println!("initial grid");
-    //rid::print_grid(&grid_at_time.at_time(0));
-
-    let my_pos: (usize, usize) = (1, 0);
-    let end_pos = grid_at_time.get_dest_pos();
+fn traverse_grid(grid: &mut Grid, start: &(usize, usize), stop: &(usize, usize), at_time: usize) -> Option<usize> {
     let possible_moves: [(isize, isize); 5] = [(1, 0), (0, 1), (0, 0), (-1, 0), (0, -1)];
 
     let mut moves: VecDeque<((usize, usize), usize)> = VecDeque::new();
-
-    moves.push_back((my_pos, 0));
+    let mut cur_tick = at_time;
+    moves.push_back((*start, at_time));
     while moves.len() > 0 {
         let m = moves.pop_front().unwrap();
         //dbg!(m);
-        if m.0 == end_pos {
+        if m.0 == *stop {
             println!("{}", m.1);
-            break;
+            return Some(m.1);
+        }
+        if m.1 != cur_tick {
+            println!("Reached tick {} with {} options in the list", m.1, moves.len());
+            Grid::print_grid(&grid.at_time(m.1));
+            cur_tick = m.1;
         }
         for rm in possible_moves.iter() {
             let pmx = m.0.0 as isize + rm.0;
@@ -175,7 +167,12 @@ fn main() {
             //println!("trying ({},{}) to ({},{}) on tick {}", m.0.0, m.0.1, pmx, pmy, m.1);
             if pmy >= 0 && pmx >= 0 {
                 let next_move = (pmx as usize, pmy as usize);
-                if grid_at_time.possible_move(next_move, m.1 + 1) {
+                if m.0 == *start && next_move == *start && m.1 == 23 {
+
+                    println!("here");
+                }
+                if grid.possible_move(next_move, m.1 + 1) {
+                    println!("{:?} can reach {:?} on tick {}", m, next_move, m.1+1);
                     moves.push_back((next_move, m.1 +1));
                 }
             }
@@ -184,4 +181,39 @@ fn main() {
     if moves.len() == 0 {
         println!("exhausted all moves");
     }
+    return None;
+}
+
+fn main() {
+    const INPUT: &str = if IS_SAMPLE {
+        include_str!("../sample.txt")
+    } else {
+        include_str!("../input24.txt")
+    };
+    let mut grid = Grid::new(parse_grid(INPUT));
+    //println!("initial grid");
+    //Grid::print_grid(&grid_at_time.at_time(0));
+
+    let start: (usize, usize) = (1, 0);
+    let stop = grid.get_dest_pos();
+    let first = traverse_grid(&mut grid, &start, &stop, 0);
+    let mut total_time = 0;
+    match first {
+        None => panic!("couldn't solve first pass"),
+        Some(t) => total_time += t,
+    }
+    let second = traverse_grid(&mut grid, &stop, &start, total_time);
+
+    match second {
+        None => panic!("couldn't solve second pass"),
+        Some(t) => total_time += t,
+    }
+
+    let third = traverse_grid(&mut grid, &start, &stop, total_time);
+
+    match third {
+        None => panic!("couldn't solve third pass"),
+        Some(t) => total_time += t,
+    }
+    println!("solved with total {total_time}");
 }
