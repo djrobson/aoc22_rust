@@ -1,11 +1,12 @@
 #![feature(is_some_and)]
-use std::collections::VecDeque;
-use rayon::prelude::*;
+use std::collections::{VecDeque,HashMap};
+//use rayon::prelude::*;
 
 const IS_SAMPLE: bool = false;
 
 struct Grid {
     grid_at_time: Vec<Vec<Vec<Vec<u8>>>>,
+    move_at_time: HashMap<((usize,usize),usize),Vec::<(usize,usize)>>,
     max_x: usize,
     max_y: usize,
 }
@@ -16,15 +17,24 @@ impl Grid {
         let max_x = first[0].len();
         let max_y = first.len();
         grid_at_time.insert(0, first);
+        let move_at_time = HashMap::new();
         Self {
             grid_at_time,
+            move_at_time,
             max_x,
             max_y,
         }
     }
     pub fn possible_move(&mut self, pos: (usize, usize), time: usize) -> bool {
-        let gt = self.at_time(time);
-        gt[pos.1][pos.0].len() == 0
+        let _gt = self.at_time(time);
+        if let Some(_m) = self.move_at_time.get(&(pos,time)) {
+            self.move_at_time.remove(&(pos,time));
+            true
+        } else {
+            false
+        }
+
+        //gt[pos.1][pos.0].len() == 0
     }
 
     fn at_time(&mut self, time: usize) -> &Vec<Vec<Vec<u8>>> {
@@ -34,9 +44,17 @@ impl Grid {
         }
         while self.grid_at_time.len() <= time {
             dbg!(self.grid_at_time.len());
+            let grid = self.calc_next_tick(self.grid_at_time.len());
+            for row in 0..grid.len() {
+                for col in 0..grid[row].len() {
+                    if grid[row][col].len() == 0 {
+                        self.move_at_time.insert(((col,row),time), Vec::new());
+                    }
+                }
+            }
             self.grid_at_time.insert(
                 self.grid_at_time.len(),
-                self.calc_next_tick(self.grid_at_time.len()),
+                grid,
             );
         }
         &self.grid_at_time[time]
@@ -64,6 +82,7 @@ impl Grid {
 
     fn calc_next_tick(&self, tick: usize) -> Vec<Vec<Vec<u8>>> {
         let mut next_grid: Vec<Vec<Vec<u8>>> = Vec::new();
+        //let mut move_at_time = HashMap::new();
 
         let this_grid = &self.grid_at_time[tick - 1];
 
