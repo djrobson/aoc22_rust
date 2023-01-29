@@ -27,6 +27,8 @@ impl Grid {
     }
     pub fn possible_move(&mut self, pos: (usize, usize), time: usize) -> bool {
         let _gt = self.at_time(time);
+        //return self.move_at_time.contains_key(&(pos,time));
+        
         if let Some(_m) = self.move_at_time.get(&(pos,time)) {
             self.move_at_time.remove(&(pos,time));
             true
@@ -58,6 +60,10 @@ impl Grid {
             );
         }
         &self.grid_at_time[time]
+    }
+
+    fn remove_grid_at_time(&mut self, time: usize) {
+        self.grid_at_time.truncate(time-1);
     }
 
     fn get_dest_pos(&self) -> (usize, usize) {
@@ -157,11 +163,11 @@ fn traverse_grid(grid: &mut Grid, start: &(usize, usize), stop: &(usize, usize),
             println!("{}", m.1);
             return Some(m.1);
         }
-        // if m.1 != cur_tick {
+        if m.1 != cur_tick {
         //     println!("Reached tick {} with {} options in the list", m.1, moves.len());
         //     Grid::print_grid(&grid.at_time(m.1));
-        //     cur_tick = m.1;
-        // }
+             cur_tick = m.1;
+        }
         for rm in possible_moves.iter() {
             let pmx = m.0.0 as isize + rm.0;
             let pmy = m.0.1 as isize + rm.1;
@@ -176,7 +182,7 @@ fn traverse_grid(grid: &mut Grid, start: &(usize, usize), stop: &(usize, usize),
         }
     }
     if moves.len() == 0 {
-        println!("exhausted all moves");
+        println!("exhausted all moves at {cur_tick}");
     }
     return None;
 }
@@ -205,7 +211,7 @@ fn main() {
         None => panic!("couldn't solve second pass"),
         Some(t) => total_time = t,
     }
-
+    grid.remove_grid_at_time(total_time-1);
     let third = traverse_grid(&mut grid, &start, &stop, total_time);
 
     match third {
