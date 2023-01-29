@@ -2,7 +2,7 @@
 use std::collections::{VecDeque,HashMap};
 //use rayon::prelude::*;
 
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 
 struct Grid {
     grid_at_time: Vec<Vec<Vec<Vec<u8>>>>,
@@ -36,13 +36,14 @@ impl Grid {
         //gt[pos.1][pos.0].len() == 0
     }
 
+    /// return the shape of the grid at specified time
     fn at_time(&mut self, time: usize) -> &Vec<Vec<Vec<u8>>> {
         let cycle_time = (self.max_x -2) * (self.max_y-2);
-        if time >= cycle_time {
-            return &self.grid_at_time[(time - cycle_time)%time];
-        }
+        //if time >= cycle_time {
+        //    return &self.grid_at_time[(time - cycle_time)%time];
+        //}
         while self.grid_at_time.len() <= time {
-            dbg!(self.grid_at_time.len());
+            //dbg!(self.grid_at_time.len());
             let grid = self.calc_next_tick(self.grid_at_time.len());
             for row in 0..grid.len() {
                 for col in 0..grid[row].len() {
@@ -156,23 +157,19 @@ fn traverse_grid(grid: &mut Grid, start: &(usize, usize), stop: &(usize, usize),
             println!("{}", m.1);
             return Some(m.1);
         }
-        if m.1 != cur_tick {
-            println!("Reached tick {} with {} options in the list", m.1, moves.len());
-            Grid::print_grid(&grid.at_time(m.1));
-            cur_tick = m.1;
-        }
+        // if m.1 != cur_tick {
+        //     println!("Reached tick {} with {} options in the list", m.1, moves.len());
+        //     Grid::print_grid(&grid.at_time(m.1));
+        //     cur_tick = m.1;
+        // }
         for rm in possible_moves.iter() {
             let pmx = m.0.0 as isize + rm.0;
             let pmy = m.0.1 as isize + rm.1;
             //println!("trying ({},{}) to ({},{}) on tick {}", m.0.0, m.0.1, pmx, pmy, m.1);
             if pmy >= 0 && pmx >= 0 {
                 let next_move = (pmx as usize, pmy as usize);
-                if m.0 == *start && next_move == *start && m.1 == 23 {
-
-                    println!("here");
-                }
                 if grid.possible_move(next_move, m.1 + 1) {
-                    println!("{:?} can reach {:?} on tick {}", m, next_move, m.1+1);
+                    //println!("{:?} can reach {:?} on tick {}", m, next_move, m.1+1);
                     moves.push_back((next_move, m.1 +1));
                 }
             }
@@ -200,20 +197,20 @@ fn main() {
     let mut total_time = 0;
     match first {
         None => panic!("couldn't solve first pass"),
-        Some(t) => total_time += t,
+        Some(t) => total_time = t,
     }
     let second = traverse_grid(&mut grid, &stop, &start, total_time);
 
     match second {
         None => panic!("couldn't solve second pass"),
-        Some(t) => total_time += t,
+        Some(t) => total_time = t,
     }
 
     let third = traverse_grid(&mut grid, &start, &stop, total_time);
 
     match third {
         None => panic!("couldn't solve third pass"),
-        Some(t) => total_time += t,
+        Some(t) => total_time = t,
     }
     println!("solved with total {total_time}");
 }
