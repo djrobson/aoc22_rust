@@ -1,7 +1,7 @@
-const IS_SAMPLE: bool = true;
+const IS_SAMPLE: bool = false;
 
-fn parse_input(input: &str) -> Vec<Vec<i8>> {
-    let mut result: Vec<Vec<i8>> = Vec::new();
+fn parse_input(input: &str) -> Vec<Vec<isize>> {
+    let mut result: Vec<Vec<isize>> = Vec::new();
     for num in input.lines() {
         result.push(num.chars().map(|c| {
             match c {
@@ -17,6 +17,10 @@ fn parse_input(input: &str) -> Vec<Vec<i8>> {
     result
 }
 
+fn convert_to_snafu(input: isize) -> String {
+    
+}
+
 fn main() {
     const INPUT: &str = if IS_SAMPLE {
         include_str!("../sample.txt")
@@ -24,12 +28,12 @@ fn main() {
         include_str!("../input25.txt")
     };
     let inputs =  parse_input(INPUT);
-    let fuel_requirements: Vec<usize> = inputs.iter().map(|line| {
+    let fuel_requirements: Vec<isize> = inputs.iter().map(|line| {
         line.iter().rev().enumerate().map(|(position, quintits)| {
-            let pos = 5^position;
-            pos * *quintits as usize
-        }).sum::<usize>()
+            let pos = 5_isize.pow(position as u32);
+            pos as isize * *quintits as isize
+        }).sum::<isize>()
     }).collect();
-    let total:usize = fuel_requirements.iter().sum();
+    let total:isize = fuel_requirements.iter().sum();
     println!("{total}");
 }
